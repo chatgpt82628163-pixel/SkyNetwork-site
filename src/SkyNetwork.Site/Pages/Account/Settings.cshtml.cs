@@ -7,7 +7,7 @@ using SkyNetwork.Site.Services;
 
 namespace SkyNetwork.Site.Pages.Account;
 
-public sealed class SettingsModel(CurrentUser me, MemberService members, ConnectService connect, AccountMail mail) : PageModel
+public sealed class SettingsModel(CurrentUser me, MemberService members, ConnectService connect, AccountMail mail, UploadStore uploads) : PageModel
 {
     [BindProperty] public string Email { get; set; } = "";
     [BindProperty] public string Country { get; set; } = "";
@@ -18,6 +18,7 @@ public sealed class SettingsModel(CurrentUser me, MemberService members, Connect
     /// <summary>Sites the member signed in to with SkyNetwork Connect.</summary>
     public IReadOnlyList<ConnectConsent> ConnectedSites { get; private set; } = [];
     public string? Error { get; private set; }
+    public Member Me => me.Member!;
 
     public void OnGet()
     {
@@ -48,6 +49,29 @@ public sealed class SettingsModel(CurrentUser me, MemberService members, Connect
             members.UpdateProfile(me.Cid, Email, Country);
             Message = "Profile saved";
         }
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostAvatarAsync(IFormFile? avatar, bool remove)
+    {
+        OnGet();
+        if (remove)
+        {
+            uploads.Delete(members.SetAvatar(me.Cid, ""));
+            Message = "Profile picture removed";
+        }
+        else if (avatar is not { Length: > 0 }) Error = "Choose a picture";
+        else
+        {
+            var (name, error) = await uploads.SaveImageAsync(avatar, HttpContext.RequestAborted, UploadStore.AvatarMaxBytes);
+            if (error != null) Error = error;
+            else
+            {
+                uploads.Delete(members.SetAvatar(me.Cid, name!));
+                Message = "Profile picture saved";
+            }
+        }
+        me.Member!.Avatar = members.Find(me.Cid)!.Avatar;
         return Page();
     }
 

@@ -11,7 +11,7 @@ public sealed class MemberService(Database db, IOptions<SiteOptions> options, Au
         SELECT m.cid, m.name, m.rating, m.staff_rank, m.suspended, p.email, COALESCE(p.country, '') AS country,
                p.registered_at, p.last_login_at, COALESCE(p.suspension_reason, '') AS suspension_reason,
                p.suspended_until, COALESCE(p.pilot_rating, 0) AS pilot_rating, COALESCE(p.military_rating, 0) AS military_rating,
-               COALESCE(p.email_verified, 1) AS email_verified
+               COALESCE(p.email_verified, 1) AS email_verified, COALESCE(p.avatar, '') AS avatar
         FROM members m LEFT JOIN member_profiles p ON p.cid = m.cid
         """;
 
@@ -91,6 +91,18 @@ public sealed class MemberService(Database db, IOptions<SiteOptions> options, Au
             INSERT INTO member_profiles (cid, email, country, registered_at) VALUES (@cid, @email, @country, @now)
             ON CONFLICT(cid) DO UPDATE SET email = @email, country = @country
             """, new { cid, email, country, now = Database.Now() });
+    }
+
+    /// <summary>Sets the profile picture (empty removes it); returns the previous file name, for the caller to delete.</summary>
+    public string SetAvatar(long cid, string avatar)
+    {
+        using var c = db.Open();
+        var old = c.ExecuteScalar<string>("SELECT avatar FROM member_profiles WHERE cid = @cid", new { cid }) ?? "";
+        c.Execute("""
+            INSERT INTO member_profiles (cid, avatar, registered_at) VALUES (@cid, @avatar, @now)
+            ON CONFLICT(cid) DO UPDATE SET avatar = @avatar
+            """, new { cid, avatar, now = Database.Now() });
+        return old;
     }
 
     /// <summary>The address is confirmed (for an email change it becomes the member's address).</summary>

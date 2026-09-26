@@ -3,10 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using SkyNetwork.Site.Data;
 using SkyNetwork.Site.Localization;
 using SkyNetwork.Site.Security;
+using SkyNetwork.Site.Services;
 
 namespace SkyNetwork.Site.Pages.Staff;
 
-public sealed class MemberModel(CurrentUser me, MemberService members, SessionService sessions, AuditService audit) : StaffPageModel(me)
+public sealed class MemberModel(CurrentUser me, MemberService members, SessionService sessions, AuditService audit, UploadStore uploads) : StaffPageModel(me)
 {
     protected override Perm Required => Perm.ViewMembers;
 
@@ -82,6 +83,20 @@ public sealed class MemberModel(CurrentUser me, MemberService members, SessionSe
         {
             members.SetName(Me.Cid, cid, name);
             Message = "Name changed. The network shows it from the member's next connection";
+        }
+        Load(cid);
+        return Page();
+    }
+
+    /// <summary>An unsuitable profile picture goes; the same people who may rename a member may do it.</summary>
+    public IActionResult OnPostRemoveAvatar(long cid)
+    {
+        if (!Load(cid) || !CanEditName) return NotFound();
+        if (Member.Avatar.Length > 0)
+        {
+            uploads.Delete(members.SetAvatar(cid, ""));
+            audit.Log(Me.Cid, "avatar", cid.ToString(), "removed");
+            Message = "Profile picture removed";
         }
         Load(cid);
         return Page();

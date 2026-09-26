@@ -193,6 +193,8 @@ public sealed class Database
         AddColumn(c, "news", "title_en", "TEXT NOT NULL DEFAULT ''");
         AddColumn(c, "news", "body_en", "TEXT NOT NULL DEFAULT ''");
         AddColumn(c, "news", "banner_en", "TEXT NOT NULL DEFAULT ''");
+        // Profile picture: a file name in the uploads directory, empty for the initials.
+        AddColumn(c, "member_profiles", "avatar", "TEXT NOT NULL DEFAULT ''");
 
     }
 

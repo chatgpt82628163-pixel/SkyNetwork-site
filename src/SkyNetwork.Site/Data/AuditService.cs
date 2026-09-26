@@ -28,6 +28,7 @@ public sealed class AuditService(Database db)
         "rating" => "Rating",
         "staff-rank" => "Staff rank",
         "name" => "Name",
+        "avatar" => "Profile picture",
         "pilot-rating" => "Pilot rating",
         "military-rating" => "Military rating",
         "suspend" => "Suspension",

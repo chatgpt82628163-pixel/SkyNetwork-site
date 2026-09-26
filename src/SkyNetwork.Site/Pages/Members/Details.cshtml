@@ -6,14 +6,21 @@
 }
 <div class="wrap page">
   <div class="profile-head">
-    <div class="avatar">@Format.Initials(m.Name)</div>
+    <partial name="_Avatar" model="m" />
     <div>
       <h1 style="font-size:30px;margin:0">@m.Name</h1>
       <div class="muted">CID <span class="mono">@m.Cid</span>
-        @if (m.Registered is { } r) { <span> · @L["member since"] @Format.Date(r)</span> }</div>
+        @if (m.Registered is { } r) { <span> · @L["member since"] @Format.Date(r)</span> }
+        @if (m.Suspended) { <span class="badge danger">@L["suspended"]</span> }</div>
     </div>
     @if (Me.Has(Perm.ViewMembers)) { <a class="btn btn-small" style="margin-left:auto" href="/staff/members/@m.Cid">@L["Open in management"]</a> }
   </div>
+  @if (m.Suspended)
+  {
+    <div class="alert error">@(m.SuspensionEnds is { } until
+        ? L["This account is suspended until"] + " " + Format.Utc(until) + ". " + L["It cannot connect to the network."]
+        : L["This account is suspended. It cannot connect to the network."])</div>
+  }
   <partial name="_RatingBadges" model="m" />
   <div class="stats">
     <div class="stat"><b>@Format.Hours(Model.Hours.PilotHours)</b><span>@L["flying"]</span></div>

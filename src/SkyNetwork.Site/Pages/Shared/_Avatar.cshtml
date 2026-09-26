@@ -1,0 +1,11 @@
+@model SkyNetwork.Site.Data.Member
+@* The profile picture, or the initials when there is none. ViewData["AvatarStyle"] sets a smaller size. *@
+@{ var style = ViewData["AvatarStyle"] as string; }
+@if (Model.AvatarUrl is { } url)
+{
+  <img class="avatar" style="@style" src="@url" alt="@Model.Name" loading="lazy">
+}
+else
+{
+  <div class="avatar" style="@style">@Format.Initials(Model.Name)</div>
+}

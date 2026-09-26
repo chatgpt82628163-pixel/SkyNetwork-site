@@ -7,7 +7,18 @@
     <h1 style="font-size:30px">@L["Settings"]</h1>
     @if (Model.Message != null) { <div class="alert ok">@L[Model.Message]</div> }
     @if (Model.Error != null) { <div class="alert error">@L[Model.Error]</div> }
-    <h2 style="font-size:20px;margin-top:24px">@L["Profile"]</h2>
+    <h2 style="font-size:20px;margin-top:24px">@L["Profile picture"]</h2>
+    <form method="post" asp-page-handler="Avatar" enctype="multipart/form-data" class="avatar-edit">
+      <partial name="_Avatar" model="Model.Me" />
+      <div class="form" style="flex:1;min-width:220px">
+        <label>@L["JPEG, PNG or WebP, up to 2 MB; a square picture looks best."]<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"></label>
+        <div class="inline-form">
+          <button class="btn btn-primary" type="submit">@L["Upload"]</button>
+          @if (Model.Me.Avatar.Length > 0) { <button class="btn" type="submit" name="remove" value="true">@L["Remove picture"]</button> }
+        </div>
+      </div>
+    </form>
+    <h2 style="font-size:20px;margin-top:40px">@L["Profile"]</h2>
     <p class="muted small">@L["Your name is changed through"] <a href="/account/support">@L["support"]</a> — @L["people recognise you by it on the air."]</p>
     <form method="post" asp-page-handler="Profile" class="form">
       <label>@L["Email"]<input name="Email" type="email" value="@Model.Email" required maxlength="120"></label>
