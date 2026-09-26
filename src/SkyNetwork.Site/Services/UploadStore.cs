@@ -5,13 +5,15 @@ using Microsoft.Extensions.Options;
 namespace SkyNetwork.Site.Services;
 
 /// <summary>
-/// Banner images for events and news, kept on disk (by default "uploads" next to the database) under
+/// Banner images for events and news and members' profile pictures, kept on disk (by default "uploads" next to the database) under
 /// random names and served from /uploads/…. Only JPEG, PNG and WebP are accepted, recognised by
 /// their content rather than the file name, up to 5 MB.
 /// </summary>
 public sealed partial class UploadStore(IOptions<SiteOptions> options, IWebHostEnvironment env)
 {
     public const long MaxBytes = 5 * 1024 * 1024;
+    /// <summary>Profile pictures are shown small: 2 MB is plenty.</summary>
+    public const long AvatarMaxBytes = 2 * 1024 * 1024;
 
     [GeneratedRegex("^[a-f0-9]{32}\\.(jpg|png|webp)$")]
     private static partial Regex FileName();
@@ -28,10 +30,10 @@ public sealed partial class UploadStore(IOptions<SiteOptions> options, IWebHostE
     }
 
     /// <summary>Stores an image; returns its file name, or an English error.</summary>
-    public async Task<(string? Name, string? Error)> SaveImageAsync(IFormFile file, CancellationToken ct = default)
+    public async Task<(string? Name, string? Error)> SaveImageAsync(IFormFile file, CancellationToken ct = default, long maxBytes = MaxBytes)
     {
         if (file.Length == 0) return (null, "The file is empty");
-        if (file.Length > MaxBytes) return (null, "The image is larger than 5 MB");
+        if (file.Length > maxBytes) return (null, maxBytes == AvatarMaxBytes ? "The image is larger than 2 MB" : "The image is larger than 5 MB");
         using var buffer = new MemoryStream();
         await file.CopyToAsync(buffer, ct);
         var bytes = buffer.ToArray();

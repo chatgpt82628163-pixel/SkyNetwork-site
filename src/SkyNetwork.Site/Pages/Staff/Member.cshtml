@@ -5,7 +5,7 @@
     ViewData["Title"] = m.Name;
 }
 <div class="profile-head">
-  <div class="avatar">@Format.Initials(m.Name)</div>
+  <partial name="_Avatar" model="m" />
   <div>
     <h1 style="font-size:28px;margin:0">@m.Name</h1>
     <div class="muted">CID <span class="mono">@m.Cid</span>
@@ -59,6 +59,15 @@
       <p class="muted small">@L["Members ask for a name change through support. The network shows the new name from the next connection."]</p>
       <div><button class="btn btn-primary" type="submit">@L["Save name"]</button></div>
     </form>
+    @if (m.Avatar.Length > 0)
+    {
+      <form method="post" asp-page-handler="RemoveAvatar" class="card form">
+        <h3>@L["Profile picture"]</h3>
+        <partial name="_Avatar" model="m" />
+        <p class="muted small">@L["Remove a picture that breaks the rules; the member can upload another one."]</p>
+        <div><button class="btn" type="submit">@L["Remove picture"]</button></div>
+      </form>
+    }
   }
   @if (Model.CanSetStaffRank)
   {

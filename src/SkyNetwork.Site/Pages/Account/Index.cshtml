@@ -29,7 +29,7 @@
       </div>
     }
     <div class="profile-head">
-      <div class="avatar">@Format.Initials(m.Name)</div>
+      <partial name="_Avatar" model="m" />
       <div>
         <h1 style="font-size:28px;margin:0">@m.Name</h1>
         <div class="muted">CID <span class="mono">@m.Cid</span></div>

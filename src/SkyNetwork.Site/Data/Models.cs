@@ -25,6 +25,9 @@ public sealed class Member
     public int MilitaryRating { get; set; }
     /// <summary>The email was confirmed by a link sent to it (members without a profile count as confirmed).</summary>
     public bool EmailVerified { get; set; } = true;
+    /// <summary>File name of the profile picture in the uploads, empty when there is none.</summary>
+    public string Avatar { get; set; } = "";
+    public string? AvatarUrl => Avatar.Length > 0 ? "/uploads/" + Avatar : null;
 
     public string RatingShort => Ratings.Short(Rating);
     public string RatingLong => Ratings.Long(Rating);

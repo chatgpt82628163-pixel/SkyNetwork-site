@@ -21,7 +21,7 @@
       </ul>
       <p class="small muted">@L["Your password stays with SkyNetwork: the site never sees it. You can withdraw access in your account settings."]</p>
       <div class="profile-head" style="margin:14px 0 18px">
-        <div class="avatar" style="width:40px;height:40px;font-size:14px">@Format.Initials(m.Name)</div>
+        <partial name="_Avatar" model="m" view-data='new ViewDataDictionary(ViewData) { ["AvatarStyle"] = "width:40px;height:40px;font-size:14px" }' />
         <div><b>@m.Name</b><div class="muted small">CID <span class="mono">@m.Cid</span> · @m.DisplayShort</div></div>
       </div>
       <form method="post" class="inline-form">
