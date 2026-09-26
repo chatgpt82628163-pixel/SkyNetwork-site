@@ -33,7 +33,7 @@
         <button class="btn btn-primary" type="submit" name="decision" value="allow">@L["Allow and continue"]</button>
         <button class="btn" type="submit" name="decision" value="deny">@L["Cancel"]</button>
       </form>
-      <form method="post" action="/logout" class="small muted" style="margin:16px 0 0">
+      <form method="post" asp-page="/Logout" class="small muted" style="margin:16px 0 0">
         <input type="hidden" name="returnUrl" value="@(HttpContext.Request.Path + HttpContext.Request.QueryString)">
         @L["Not you?"] <button type="submit" class="link-button">@L["Sign out"]</button>
       </form>
