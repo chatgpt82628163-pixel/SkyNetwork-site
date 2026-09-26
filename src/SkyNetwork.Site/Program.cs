@@ -35,6 +35,7 @@ builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<Lang>();
 builder.Services.AddHostedService<SuspensionExpiry>();
 builder.Services.AddHttpClient("feed", c => c.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient("discord-bot", c => c.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddSingleton<NetworkFeed>();
 builder.Services.AddHttpClient("tiles", c =>
 {
@@ -145,6 +146,7 @@ app.MapRazorPages();
 app.MapSiteApi();
 app.MapDivisionApi();
 app.MapConnect();
+app.MapDiscordBot();
 
 // Language switch: remembered for a year in a cookie, then back to the page.
 app.MapGet("/lang/{code}", (string code, string? r, HttpContext ctx) =>
