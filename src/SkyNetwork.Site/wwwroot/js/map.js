@@ -160,9 +160,12 @@
   }).catch(() => { });
 
   // Sector of a CTR/FSS position, the longest callsign prefix first: UUWV_N_CTR → UUWV-N, UUWV_CTR → UUWV, RU-WRC_FSS → UMMV+UUWV+UWWW.
+  // A part of a sector with no border of its own (EYVL_S_CTR when only EYVL is known) is not the whole sector:
+  // null, so it is drawn around the controller's position. Digits are not a part (UUWV_1_CTR is UUWV).
   function sectorOf(c) {
-    const parts = String(c.callsign).toUpperCase().split('_').slice(0, -1);
+    const parts = String(c.callsign).toUpperCase().split('_').slice(0, -1).filter(p => !/^\d+$/.test(p));
     for (let n = parts.length; n > 0; n--) {
+      if (n < parts.length && c.latitude != null) return null;
       const key = parts.slice(0, n).join('_');
       const fir = firs.prefixes[key], f = fir && firById.get(fir.b);
       if (f) return { id: fir.b, name: fir.n, features: [f], label: f.properties.lat != null ? [f.properties.lat, f.properties.lon] : null };
@@ -341,7 +344,8 @@
     }
   }
   map.on('moveend', drawCodes);
-  if (!compact) loadAirports().then(drawCodes);
+  // Airport positions place approach circles and tower badges: drawn again once known.
+  loadAirports().then(() => { if (!compact) drawCodes(); render(); });
   layerToggle('layer-codes', 'codes', on => { if (on) { codesLayer.addTo(map); drawCodes(); } else codesLayer.remove(); });
 
   // Everyone on the map at once.
@@ -372,8 +376,9 @@
           s.controllers.push(c);
           staffed.set(sector.id, s);
         } else if (at) {
-          // No known border for this callsign: a circle of the usual size instead.
-          L.circle(at, { radius: (c.facility === 'FSS' ? 250 : 180) * 1852, color: ctr, weight: 1.2, fillOpacity: .06, bubblingMouseEvents: false })
+          // No known border for this callsign: a circle instead, smaller for a part of a sector.
+          const part = String(c.callsign).split('_').filter(p => !/^\d+$/.test(p)).length > 2;
+          L.circle(at, { radius: (c.facility === 'FSS' ? 250 : part ? 90 : 180) * 1852, color: ctr, weight: 1.2, fillOpacity: .06, bubblingMouseEvents: false })
             .on('click', open('atc', c.callsign)).addTo(sectors);
           label(`<span class="atc-label" title="${esc(c.name)} · ${esc(c.frequency)}" style="transform:translate(-50%,-50%);display:inline-block">${esc(c.callsign)}</span>`, open('atc', c.callsign))
             .setLatLng(at).addTo(traffic);
@@ -382,8 +387,10 @@
       }
       const code = prefix(c.callsign);
       towers.set(code, [...(towers.get(code) ?? []), c]);
-      if (c.facility === 'APP' && at)
-        L.circle(at, { radius: 45 * 1852, color: app, weight: 1, dashArray: '4 4', fillOpacity: .05, bubblingMouseEvents: false })
+      // Around the airport: a controller's own position is often the middle of their whole sector file.
+      const airportAt = aptLL(code) ?? at;
+      if (c.facility === 'APP' && airportAt)
+        L.circle(airportAt, { radius: 45 * 1852, color: app, weight: 1, dashArray: '4 4', fillOpacity: .05, bubblingMouseEvents: false })
           .on('click', open('airport', code)).addTo(sectors);
     }
 
@@ -403,7 +410,7 @@
     if (staffedBefore !== [...staffedAirports].join()) drawCodes();
     for (const [code, list] of towers) {
       const c = list.find(x => x.latitude != null);
-      const at = c ? [c.latitude, c.longitude] : aptLL(code);
+      const at = aptLL(code) ?? (c ? [c.latitude, c.longitude] : null);
       if (!at) continue;
       const chips = order.filter(f => list.some(x => x.facility === f)).map(f => `<i class="${f}">${f[0]}</i>`).join('');
       const hint = list.map(x => `${esc(x.callsign)} ${esc(x.frequency)}`).join('&#10;');

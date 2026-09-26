@@ -41,4 +41,9 @@ public sealed class SiteOptions
     public int RegistrationsPerDayPerAddress { get; set; } = 3;
     /// <summary>Seconds the registration form must be open before it is sent (bots send it at once); 0 turns the check off.</summary>
     public int SignupMinSeconds { get; set; } = 3;
+    /// <summary>
+    /// The Discord bot's own web page (github.com/Anntixs/skynetwork_bot): /discord/… is passed on to it, so members come
+    /// back to it after signing in with SkyNetwork Connect. Empty turns this off.
+    /// </summary>
+    public string DiscordBotUrl { get; set; } = "http://127.0.0.1:8090";
 }
