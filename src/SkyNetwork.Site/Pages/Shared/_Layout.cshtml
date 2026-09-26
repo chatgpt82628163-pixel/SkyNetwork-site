@@ -43,7 +43,7 @@
         @if (Me.Member is { } m)
         {
           @if (Me.IsStaff) { <a href="/staff">@L["Management"]</a> }
-          <a href="/account" class="me" title="@L["My account"] · @m.Name · CID @m.Cid"><span class="initials">@Format.Initials(m.Name)</span><span class="name">@m.Name</span></a>
+          <a href="/account" class="me" title="@L["My account"] · @m.Name · CID @m.Cid">@if (m.AvatarUrl is { } avatar) { <img class="initials" src="@avatar" alt=""> } else { <span class="initials">@Format.Initials(m.Name)</span> }<span class="name">@m.Name</span></a>
           <form method="post" asp-page="/Logout"><button class="btn btn-small" type="submit">@L["Sign out"]</button></form>
         }
         else

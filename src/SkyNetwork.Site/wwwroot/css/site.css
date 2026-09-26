@@ -250,6 +250,7 @@ html.at-top .site-header::after { opacity: 0; }
 .user-nav .me { display: inline-flex; align-items: center; gap: 8px; padding: 4px; }
 .user-nav .me .initials { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--grad-button); color: #fff; font: 700 11px var(--display); letter-spacing: .02em; box-shadow: var(--btn-shadow); }
 /* On desktop the account link is just the initials (name in the tooltip): the menu stays on one line in every language. */
+.user-nav .me img.initials { object-fit: cover; padding: 0; }
 .user-nav .me .name { display: none; }
 .site-header .nav-toggle { display: none; }
 

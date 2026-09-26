@@ -43,6 +43,7 @@ public class AvatarTests
         Assert.Matches("^[a-f0-9]{32}\\.png$", first);
         Assert.Contains($"/uploads/{first}", await site.Browser().HtmlAsync($"/members/{cid}"));
         Assert.Contains($"/uploads/{first}", await c.HtmlAsync("/account"));
+        Assert.Contains($"<img class=\"initials\" src=\"/uploads/{first}\"", await c.HtmlAsync("/")); // the header, top right
 
         // A new picture replaces the old file; not an image is refused.
         await Post(c, "/account/settings", "Avatar", Png);
