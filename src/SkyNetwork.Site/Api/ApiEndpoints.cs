@@ -118,7 +118,7 @@ public static class ApiEndpoints
                 controllers = s.Controllers.Select(c => new
                 {
                     c.Cid, c.Name, c.Callsign, c.Rating, c.Frequency, facility = c.FacilityName, c.VisualRange, c.Latitude, c.Longitude,
-                    logonTime = c.LogonTime,
+                    logonTime = c.LogonTime, textAtis = c.Text, atisCode = c.AtisCode,
                 }),
             };
         });

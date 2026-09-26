@@ -291,6 +291,32 @@ public class FeedTests
         Assert.Equal(0, b.Pilots[0].Heading!.Value, 1); // moved due north
     }
 
+    private const string AtisFeed = """
+        {"general":{"server":"SkyNetwork","update_timestamp":1790000000},"pilots":[],
+         "controllers":[{"cid":1000010,"name":"Ivan Petrov","callsign":"UUEE_ATIS","logon_time":1789998000,"latitude":55.97,"longitude":37.41,
+                    "rating":"S3","frequency":"128.125","facility":0,"visual_range":50,
+                    "text_atis":["SHEREMETYEVO ATIS INFORMATION KILO 1200Z","RWY 24R IN USE"]},
+                    {"cid":1000011,"name":"Old Server","callsign":"UUEE_TWR","logon_time":1789998000,"rating":"S3","frequency":"131.500","facility":4}]}
+        """;
+
+    [Fact]
+    public async Task AtisIsShownWithItsLetterAndText()
+    {
+        var snap = FeedParser.Parse(AtisFeed);
+        var atis = snap.Controllers.First(c => c.Callsign == "UUEE_ATIS");
+        Assert.Equal(("ATIS", "K"), (atis.FacilityName, atis.AtisCode));
+        Assert.Equal(2, atis.Text.Count);
+        Assert.Empty(snap.Controllers.First(c => c.Callsign == "UUEE_TWR").Text); // a server without text_atis
+
+        using var site = new SiteFactory();
+        site.Get<NetworkFeed>().Ingest(AtisFeed);
+        var json = await site.Browser().HtmlAsync("/api/v1/online");
+        Assert.Contains("\"facility\":\"ATIS\"", json);
+        Assert.Contains("\"atisCode\":\"K\"", json);
+        Assert.Contains("RWY 24R IN USE", json);
+        Assert.Contains("RWY 24R IN USE", await site.Browser().HtmlAsync("/online"));
+    }
+
     [Fact]
     public async Task TracksSessions_AndSurvivesRestart()
     {

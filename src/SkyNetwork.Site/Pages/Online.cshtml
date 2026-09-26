@@ -23,7 +23,8 @@
         <div class="strip @c.FacilityName">
           <a class="cs" href="/members/@c.Cid">@c.Callsign</a>
           <span class="who">@c.Name · @c.Rating · @L["since"] @Format.Time(c.LogonTime)</span>
-          <span class="freq">@c.Frequency</span>
+          <span class="freq">@c.Frequency@(c.AtisCode.Length > 0 ? " · " + c.AtisCode : "")</span>
+          @if (c.Text.Count > 0) { <div class="atis-text" style="grid-column:1/-1">@string.Join("\n", c.Text)</div> }
         </div>
       }
     </div>
