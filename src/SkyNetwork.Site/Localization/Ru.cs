@@ -246,6 +246,7 @@ public static class Ru
         ["news"] = "новостями",
         ["Draft — visible to the team only."] = "Черновик — видно только команде.",
         ["Sector:"] = "Сектор:",
+        ["Controller info"] = "Информация диспетчера",
         ["Sector borders"] = "Границы секторов",
         ["Changes to the network and software."] = "Изменения в сети и программах.",
         ["Position bookings"] = "Бронирование позиций",

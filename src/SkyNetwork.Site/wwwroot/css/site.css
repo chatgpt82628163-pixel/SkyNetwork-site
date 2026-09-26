@@ -64,6 +64,7 @@
   --f-twr: #cf8a1c;
   --f-app: #1a6fe0;
   --f-ctr: #6d55d8;
+  --f-atis: #0e8f8f;
   --f-pilot: #9aa9bd;
 
   --display: "Manrope", "Inter", system-ui, sans-serif;
@@ -128,7 +129,7 @@
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%2393a6c2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --map-fir: rgba(140,170,210,.32); --map-route: #6fb3f7; --map-flown: #f4a15d;
   --apt-apron: #121d2e; --apt-building: #1f2c40; --apt-runway: #5f6f88; --apt-taxiway: #3d4c63; --apt-label: #93a6c2; --apt-rwy: #f07a4a;
-  --f-del: #8fa1ba; --f-gnd: #49c08a; --f-twr: #eab04f; --f-app: #5aa8f7; --f-ctr: #a08cf0; --f-pilot: #5d6f88;
+  --f-del: #8fa1ba; --f-gnd: #49c08a; --f-twr: #eab04f; --f-app: #5aa8f7; --f-ctr: #a08cf0; --f-atis: #3cc7c7; --f-pilot: #5d6f88;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -179,7 +180,7 @@
     --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%2393a6c2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     --map-fir: rgba(140,170,210,.32); --map-route: #6fb3f7; --map-flown: #f4a15d;
     --apt-apron: #121d2e; --apt-building: #1f2c40; --apt-runway: #5f6f88; --apt-taxiway: #3d4c63; --apt-label: #93a6c2; --apt-rwy: #f07a4a;
-    --f-del: #8fa1ba; --f-gnd: #49c08a; --f-twr: #eab04f; --f-app: #5aa8f7; --f-ctr: #a08cf0; --f-pilot: #5d6f88;
+    --f-del: #8fa1ba; --f-gnd: #49c08a; --f-twr: #eab04f; --f-app: #5aa8f7; --f-ctr: #a08cf0; --f-atis: #3cc7c7; --f-pilot: #5d6f88;
   }
 }
 
@@ -342,6 +343,7 @@ main::before { content: ""; position: absolute; left: 0; right: 0; top: 0; heigh
 .strip.TWR { --edge: var(--f-twr); }
 .strip.APP { --edge: var(--f-app); }
 .strip.CTR, .strip.FSS { --edge: var(--f-ctr); }
+.strip.ATIS { --edge: var(--f-atis); }
 .strip a.cs:hover { color: var(--accent); }
 .facts { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 14px; }
 .facts dt { color: var(--slate); font-size: 12px; }
@@ -648,6 +650,8 @@ details.mc-sec .mc-block + .mc-block { margin-top: 12px; }
 .apt-badge .GND { background: var(--f-gnd); }
 .apt-badge .TWR { background: var(--f-twr); }
 .apt-badge .APP { background: var(--f-app); }
+.apt-badge .ATIS { background: var(--f-atis); }
+.atis-text { font: 12px/1.5 var(--mono); white-space: pre-wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 6px 0 0; }
 .apt-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--paper); border: 2px solid var(--map-route); }
 .fir-label { background: none; border: 0; box-shadow: none; font: 700 11px var(--mono); color: var(--f-ctr); text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper); }
 .fir-label::before { display: none; }

@@ -16,7 +16,7 @@ public static class MapTexts
         "Route from SimBrief (AIRAC {0})", "Route worked out from the flight plan", "Not found in the database: {0}",
         "Center on aircraft", "Follow", "Following", "Share link", "Link copied",
         "Online for {0}", "Online for", "Frequency", "Rating", "Sector:", "Airport:",
-        "none", "no data", "Loading…", "Controllers", "nobody", "Departures", "Arrivals", "Not found: {0}",
+        "none", "no data", "Loading…", "Controllers", "nobody", "Departures", "Arrivals", "Not found: {0}", "Controller info",
     ];
 
     public static string Json(Lang l) => JsonSerializer.Serialize(Keys.ToDictionary(k => k, k => l[k]));

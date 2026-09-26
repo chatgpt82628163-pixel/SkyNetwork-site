@@ -404,7 +404,7 @@
         .setLatLng(s.label ?? shape.getBounds().getCenter()).addTo(traffic);
     }
 
-    const order = ['DEL', 'GND', 'TWR', 'APP'];
+    const order = ['DEL', 'GND', 'TWR', 'APP', 'ATIS'];
     const staffedBefore = [...staffedAirports].join();
     staffedAirports = new Set(towers.keys());
     if (staffedBefore !== [...staffedAirports].join()) drawCodes();
@@ -412,7 +412,9 @@
       const c = list.find(x => x.latitude != null);
       const at = aptLL(code) ?? (c ? [c.latitude, c.longitude] : null);
       if (!at) continue;
-      const chips = order.filter(f => list.some(x => x.facility === f)).map(f => `<i class="${f}">${f[0]}</i>`).join('');
+      // The ATIS chip shows its current letter.
+      const chips = order.filter(f => list.some(x => x.facility === f)).map(f => f === 'ATIS'
+        ? `<i class="ATIS">${esc(list.find(x => x.facility === 'ATIS').atisCode || 'i')}</i>` : `<i class="${f}">${f[0]}</i>`).join('');
       const hint = list.map(x => `${esc(x.callsign)} ${esc(x.frequency)}`).join('&#10;');
       label(`<span class="apt-badge" title="${hint}" style="transform:translate(-50%,-50%)">${esc(code)}${chips}</span>`, open('airport', code))
         .setLatLng(at).addTo(traffic);
@@ -744,7 +746,16 @@
         </div>
         ${sector ? `<div class="small"><span class="muted">${t('Sector:')}</span> ${esc(sector.name)}</div>`
                  : `<div class="small"><span class="muted">${t('Airport:')}</span> <a href="#" data-select="airport|${esc(code)}">${esc(code)}</a></div>`}
+        ${atisText(c)}
       </div>`;
+  }
+
+  // The ATIS text (or a controller's info lines) as the server last got it.
+  function atisText(c) {
+    const lines = c.textAtis ?? [];
+    if (!lines.length) return '';
+    const title = c.facility === 'ATIS' ? 'ATIS' + (c.atisCode ? ' · ' + esc(c.atisCode) : '') : t('Controller info');
+    return `<div class="mc-block"><div class="eyebrow">${title}</div><div class="atis-text">${lines.map(esc).join('\n')}</div></div>`;
   }
 
   function airportCard(code) {
@@ -764,6 +775,7 @@
         <div class="mc-block"><div class="eyebrow">METAR</div>${metar ? `<div class="mc-text">${esc(metar)}</div>`
           : `<div class="muted small">${metar === '' ? t('no data') : t('Loading…')}</div>`}</div>
         <div class="mc-block"><div class="eyebrow">${t('Controllers')}</div>${strips ? `<div class="mc-list">${strips}</div>` : `<div class="muted small">${t('nobody')}</div>`}</div>
+        ${atc.filter(c => c.facility === 'ATIS').map(atisText).join('')}
         <div class="mc-block"><div class="eyebrow">${t('Departures')} · ${deps.length}</div>${flights(deps)}</div>
         <div class="mc-block"><div class="eyebrow">${t('Arrivals')} · ${arrs.length}</div>${flights(arrs)}</div>
       </div>`;

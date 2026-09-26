@@ -9,13 +9,36 @@ public sealed record FeedFlightPlan(string Rules, string Aircraft, int CruiseSpe
 public sealed record PilotOnline(long Cid, string Name, string Callsign, double? Latitude, double? Longitude, int Altitude,
     int Groundspeed, string Transponder, double? Heading, DateTime LogonTime, FeedFlightPlan? FlightPlan, bool OnGround = false);
 
-public sealed record ControllerOnline(long Cid, string Name, string Callsign, string Rating, string Frequency, int Facility,
-    int VisualRange, double? Latitude, double? Longitude, DateTime LogonTime)
+public sealed partial record ControllerOnline(long Cid, string Name, string Callsign, string Rating, string Frequency, int Facility,
+    int VisualRange, double? Latitude, double? Longitude, DateTime LogonTime, IReadOnlyList<string>? TextAtis = null)
 {
-    public string FacilityName => Facility switch
+    /// <summary>An ATIS logs in as an observer; its callsign (UUEE_ATIS) tells it apart.</summary>
+    public bool IsAtis => Callsign.EndsWith("_ATIS", StringComparison.OrdinalIgnoreCase);
+
+    public string FacilityName => IsAtis ? "ATIS" : Facility switch
     {
         1 => "FSS", 2 => "DEL", 3 => "GND", 4 => "TWR", 5 => "APP", 6 => "CTR", _ => "OBS",
     };
+
+    /// <summary>The ATIS text (or a controller's info lines) as the server last received it.</summary>
+    public IReadOnlyList<string> Text => TextAtis ?? [];
+
+    /// <summary>The ATIS letter from "INFORMATION K" / "INFORMATION KILO" / "ИНФОРМАЦИЯ K", or empty.</summary>
+    public string AtisCode
+    {
+        get
+        {
+            if (!IsAtis) return "";
+            foreach (var line in Text)
+                if (Code().Match(line) is { Success: true } m)
+                    return m.Groups[1].Value.ToUpperInvariant()[..1];
+            return "";
+        }
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\b(?:INFORMATION|ИНФОРМАЦИЯ|ИНФОРМАЦИИ)\s+(ALFA|ALPHA|BRAVO|CHARLIE|DELTA|ECHO|FOXTROT|GOLF|HOTEL|INDIA|JULIETT?|KILO|LIMA|MIKE|NOVEMBER|OSCAR|PAPA|QUEBEC|ROMEO|SIERRA|TANGO|UNIFORM|VICTOR|WHISKEY|X-?RAY|YANKEE|ZULU|[A-Z])\b",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase)]
+    private static partial System.Text.RegularExpressions.Regex Code();
 }
 
 /// <summary>One point of an aircraft's flown track (unix seconds).</summary>
@@ -67,7 +90,10 @@ public static class FeedParser
             controllers.Add(new ControllerOnline(
                 c.GetProperty("cid").GetInt64(), c.GetProperty("name").GetString() ?? "", c.GetProperty("callsign").GetString() ?? "",
                 c.TryGetProperty("rating", out var r) ? r.GetString() ?? "" : "", c.TryGetProperty("frequency", out var f) ? f.GetString() ?? "" : "",
-                Int(c, "facility"), Int(c, "visual_range"), Number(c, "latitude"), Number(c, "longitude"), Logon(c)));
+                Int(c, "facility"), Int(c, "visual_range"), Number(c, "latitude"), Number(c, "longitude"), Logon(c),
+                c.TryGetProperty("text_atis", out var ta) && ta.ValueKind == JsonValueKind.Array
+                    ? ta.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToList()
+                    : null));
 
         return new OnlineSnapshot(updated, server, true,
             pilots.OrderBy(p => p.Callsign).ToList(), controllers.OrderBy(c => c.Callsign).ToList());
