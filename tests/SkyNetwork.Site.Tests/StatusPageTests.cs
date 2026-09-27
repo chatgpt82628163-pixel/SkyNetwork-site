@@ -156,10 +156,13 @@ public class StatusPageTests
         string output = string.Join('\n',
             """{"__REALTIME_TIMESTAMP":"1790000000000000","_SYSTEMD_UNIT":"skynet-fsd.service","PRIORITY":"3","MESSAGE":"client 10.0.0.5 dropped after 31 s"}""",
             """{"__REALTIME_TIMESTAMP":"1790000060000000","_SYSTEMD_UNIT":"skynet-voice.service","PRIORITY":"4","MESSAGE":"late packet"}""",
+            // systemd's own note about a service names the service in UNIT.
+            """{"__REALTIME_TIMESTAMP":"1790000120000000","_SYSTEMD_UNIT":"init.scope","UNIT":"caddy.service","PRIORITY":"4","MESSAGE":"caddy.service: Failed with result 'timeout'."}""",
             """{"__REALTIME_TIMESTAMP":"17900""", // cut off
             """{"_SYSTEMD_UNIT":"caddy.service","MESSAGE":[104,105]}""");
         var entries = HostProbe.ParseJournal(output);
-        Assert.Equal(2, entries.Count);
+        Assert.Equal(3, entries.Count);
+        Assert.Equal(("caddy", "Failed with result 'timeout'."), (entries[2].Source, entries[2].Message));
         Assert.Equal(("skynet-fsd", true, "client 10.0.0.5 dropped after 31 s"), (entries[0].Source, entries[0].IsError, entries[0].Message));
         Assert.Equal(DateTime.UnixEpoch.AddSeconds(1790000000), entries[0].Time);
         Assert.Equal(("skynet-voice", false), (entries[1].Source, entries[1].IsError));

@@ -60,6 +60,6 @@ public sealed class SiteOptions
     public string WebService { get; set; } = "caddy";
     /// <summary>UDP port of the voice server.</summary>
     public int VoicePort { get; set; } = 3782;
-    /// <summary>GitHub repositories (owner/name, comma-separated) of the programs whose latest release the status page checks.</summary>
-    public string ReleaseRepos { get; set; } = "Anntixs/skypilot,Anntixs/Network-ATC";
+    /// <summary>GitHub repositories of the programs whose latest release the status page checks: "owner/repo=Name", comma-separated.</summary>
+    public string ReleaseRepos { get; set; } = "Anntixs/skypilot=SkyPilot,Anntixs/Network-ATC=Network-ATC";
 }

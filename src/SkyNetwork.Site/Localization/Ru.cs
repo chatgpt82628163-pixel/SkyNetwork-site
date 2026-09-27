@@ -944,5 +944,10 @@ public static class Ru
         ["Publish releases with a version tag (for example 0.2.0) from main: GitHub then builds and attaches the installer by itself."] = "Публикуйте выпуски с тегом версии (например 0.2.0) из main: тогда GitHub сам соберёт и приложит установщик.",
         ["Server"] = "Сервер",
         ["Programs"] = "Программы",
+        // Status page title and spam folder hints.
+        ["Network status"] = "Состояние сети",
+        ["grey: not checked yet"] = "серым — ещё не проверялось",
+        ["No letter within a few minutes? Look in the Spam folder and mark it as not spam, so our next letters reach your inbox."] = "Письма нет через несколько минут? Загляните в папку «Спам» и отметьте его «Не спам» — тогда следующие письма придут во «Входящие».",
+        ["We sent a link to the new address: the email changes once you open it. No letter? Look in the Spam folder"] = "Мы отправили ссылку на новый адрес: почта сменится, когда вы её откроете. Письма нет? Загляните в папку «Спам»",
     };
 }

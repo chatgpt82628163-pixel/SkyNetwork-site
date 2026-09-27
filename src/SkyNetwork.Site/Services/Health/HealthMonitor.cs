@@ -118,9 +118,12 @@ public sealed class HealthMonitor(
                 Guarded("web", Server, "Web server", () => ServiceCheck("web", Server, "Web server", o.WebService, null, tcp: true, ct)),
                 Guarded("logs", Server, "Service logs", () => Slow("logs", TimeSpan.FromMinutes(2), () => JournalCheck(ct))),
             };
-            foreach (var repo in o.ReleaseRepos.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            // "owner/repo=Name" or just "owner/repo".
+            foreach (var entry in o.ReleaseRepos.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                string id = "release:" + repo, name = repo[(repo.IndexOf('/') + 1)..];
+                int eq = entry.IndexOf('=');
+                string repo = eq > 0 ? entry[..eq].Trim() : entry;
+                string id = "release:" + repo, name = eq > 0 ? entry[(eq + 1)..].Trim() : repo[(repo.IndexOf('/') + 1)..];
                 checks.Add(Guarded(id, Programs, name, () => Slow(id, TimeSpan.FromMinutes(60), () => ReleaseCheck(id, repo, name, ct))));
             }
             var results = await Task.WhenAll(checks);

@@ -141,7 +141,9 @@ public static class HostProbe
                 using var doc = JsonDocument.Parse(line);
                 var r = doc.RootElement;
                 if (Text(r, "MESSAGE") is not { Length: > 0 } message) continue;
-                string unit = Text(r, "_SYSTEMD_UNIT") ?? Text(r, "SYSLOG_IDENTIFIER") ?? "system";
+                // systemd's own notes about a service ("caddy.service: Failed with result 'timeout'.") name it in UNIT.
+                string unit = Text(r, "UNIT") ?? Text(r, "_SYSTEMD_UNIT") ?? Text(r, "SYSLOG_IDENTIFIER") ?? "system";
+                if (message.StartsWith(unit + ": ", StringComparison.Ordinal)) message = message[(unit.Length + 2)..];
                 if (unit.EndsWith(".service", StringComparison.Ordinal)) unit = unit[..^8];
                 int priority = int.TryParse(Text(r, "PRIORITY"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var p) ? p : 4;
                 var time = long.TryParse(Text(r, "__REALTIME_TIMESTAMP"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var us)

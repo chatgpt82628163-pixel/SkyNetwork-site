@@ -46,9 +46,11 @@ public sealed class Notifications(Database db, Mailer mailer, IOptions<SiteOptio
     public void ConfirmEmail(string email, string name, long cid, string link) =>
         mailer.Send(email, $"{Network}: подтвердите почту / confirm your email", Footer(
             $"Здравствуйте, {name}!\n\nВаш CID: {cid}. Чтобы подтвердить эту почту, откройте ссылку (действует 48 часов):\n{link}\n\n" +
-            "Пока почта не подтверждена, подключиться к сети нельзя. Если вы не регистрировались, просто удалите это письмо.",
+            "Пока почта не подтверждена, подключиться к сети нельзя. Если вы не регистрировались, просто удалите это письмо.\n\n" +
+            "Если письмо попало в «Спам», отметьте его «Не спам» — тогда следующие письма SkyNetwork будут приходить во «Входящие».",
             $"Hello {name},\n\nYour CID: {cid}. To confirm this email address, open the link (valid for 48 hours):\n{link}\n\n" +
-            "You cannot connect to the network until the address is confirmed. If you did not sign up, just delete this letter."));
+            "You cannot connect to the network until the address is confirmed. If you did not sign up, just delete this letter.\n\n" +
+            "If this letter landed in Spam, mark it as not spam: our next letters will then reach your inbox."));
 
     public void ResetPassword(string email, string name, long cid, string link) =>
         mailer.Send(email, $"{Network}: смена пароля / password reset", Footer(

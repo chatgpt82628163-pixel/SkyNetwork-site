@@ -40,7 +40,7 @@ public sealed class SettingsModel(CurrentUser me, MemberService members, Connect
             // A new address takes effect once it is confirmed by the link sent to it.
             members.UpdateCountry(me.Cid, Country);
             Message = mail.SendConfirmation(Request, me.Member!, Email)
-                ? "We sent a link to the new address: the email changes once you open it"
+                ? "We sent a link to the new address: the email changes once you open it. No letter? Look in the Spam folder"
                 : "A letter was sent a moment ago: wait two minutes before asking for another one";
             Email = me.Member!.Email ?? "";
         }
