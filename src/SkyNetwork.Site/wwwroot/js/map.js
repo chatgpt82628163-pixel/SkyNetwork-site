@@ -34,6 +34,31 @@
   const routeLayer = L.layerGroup().addTo(map);   // the selected flight
   const calm = matchMedia('(prefers-reduced-motion: reduce)');
 
+  // Friends of the signed-in member: a star in the cards, highlighted on the map, listed in the panel.
+  const signedIn = el.dataset.signedIn === '1';
+  let friends = new Set();
+  let starred = 0;   // the CID just added: its star pops once
+  async function loadFriends() {
+    if (!signedIn || compact) return;
+    try {
+      const r = await fetch('/api/me/friends', { cache: 'no-store' });
+      if (r.ok) { friends = new Set((await r.json()).friends); render(); }
+    } catch { }
+  }
+  async function toggleFriend(cid) {
+    if (!signedIn) { location.href = '/login?returnUrl=' + encodeURIComponent(location.pathname + location.hash); return; }
+    const adding = !friends.has(cid);
+    try {
+      const r = await fetch('/api/me/friends/' + cid, { method: adding ? 'POST' : 'DELETE', headers: { RequestVerificationToken: el.dataset.xsrf || '' } });
+      if (!r.ok) return;
+      friends = new Set((await r.json()).friends);
+      starred = adding ? cid : 0;
+      render();
+      starred = 0;
+    } catch { }
+  }
+  const coarse = matchMedia('(pointer: coarse)');   // touch device: no hover popover
+
   const card = document.getElementById('map-card');
   const search = document.getElementById('map-search');
   const firToggle = document.getElementById('fir-toggle');
@@ -145,7 +170,8 @@
 
   // Always the aircraft symbol (pointing north when the heading is unknown) with the callsign underneath.
   const planeClass = (p, isSelected) =>
-    'plane' + ((p.onGround ?? p.groundspeed < 40) ? ' ground' : '') + (isSelected ? ' selected' : '') + (p.heading == null ? ' nohdg' : '');
+    'plane' + ((p.onGround ?? p.groundspeed < 40) ? ' ground' : '') + (isSelected ? ' selected' : '') + (p.heading == null ? ' nohdg' : '') +
+    (friends.has(p.cid) ? ' friend' : '');
   const plane = (p, isSelected, turn, born) => L.divIcon({
     className: planeClass(p, isSelected) + (born ? ' born' : ''),
     iconSize: [22, 22], iconAnchor: [11, 11],
@@ -393,6 +419,140 @@
   loadAirports().then(() => { if (!compact) drawCodes(); render(); });
   layerToggle('layer-codes', 'codes', on => { if (on) { codesLayer.addTo(map); drawCodes(); } else codesLayer.remove(); });
 
+  // ---- hover popover ----
+  // A small card anchored to airport badges, sector labels, and approach circles.
+  // Only shown on pointer devices; touch users tap to open the full card as before.
+  const popEl = (() => {
+    const d = document.createElement('div');
+    d.className = 'map-pop';
+    d.hidden = true;
+    (el.closest('.map-page') ?? el.parentElement).appendChild(d);
+    return d;
+  })();
+
+  let hov = null;        // { kind: 'apt'|'atc'|'app', key, at:[lat,lon] } or null
+  let hovTimer = 0;
+
+  function showPop(kind, key, at) {
+    clearTimeout(hovTimer);
+    const content = buildPop(kind, key);
+    if (!content) return;
+    const same = hov && hov.kind === kind && hov.key === key;
+    hov = { kind, key, at };
+    popEl.innerHTML = content;
+    placePop();
+    if (!same) {
+      // Re-trigger the grow-in animation for a new element.
+      popEl.hidden = true;
+      void popEl.offsetHeight;  // flush
+    }
+    popEl.hidden = false;
+  }
+
+  function hidePop() {
+    hovTimer = setTimeout(() => {
+      hov = null;
+      popEl.hidden = true;
+    }, 100);
+  }
+
+  function keepPop() { clearTimeout(hovTimer); }
+
+  function placePop() {
+    if (!hov) return;
+    const pt = map.latLngToContainerPoint(hov.at);
+    const above = pt.y > 160;
+    popEl.style.left = Math.round(pt.x) + 'px';
+    popEl.style.top = Math.round(above ? pt.y - 6 : pt.y + 6) + 'px';
+    popEl.style.transform = above ? 'translate(-50%,-100%)' : 'translate(-50%,0)';
+    // It grows out of the badge it belongs to.
+    popEl.style.transformOrigin = above ? '50% 100%' : '50% 0';
+  }
+
+  function updatePop() {
+    if (!hov || popEl.hidden) return;
+    const content = buildPop(hov.kind, hov.key);
+    if (!content) { hov = null; popEl.hidden = true; return; }
+    popEl.innerHTML = content;
+    placePop();
+  }
+
+  popEl.addEventListener('mouseenter', keepPop);
+  popEl.addEventListener('mouseleave', hidePop);
+  map.on('move', placePop);
+
+  function buildPop(kind, key) {
+    if (!data) return '';
+    if (kind === 'apt') return popAirport(key);
+    if (kind === 'atc') return popAtc(key);
+    if (kind === 'app') return popApp(key);
+    return '';
+  }
+
+  const popChip = c => {
+    const f = c.facility;
+    if (f === 'ATIS') return `<i class="ATIS">${esc(c.atisCode || 'i')}</i>`;
+    if (f === 'FSS')  return `<i class="FSS">F</i>`;
+    return `<i class="${f}">${f[0]}</i>`;
+  };
+
+  function popRow(c) {
+    const atisLine = c.facility === 'ATIS' && c.textAtis?.length
+      ? `<div class="pop-atis">${esc(c.textAtis[0].slice(0, 72))}</div>` : '';
+    return `<div class="pop-row">` +
+      `<div class="pop-head">${popChip(c)}<span class="pop-cs">${esc(c.callsign)}</span><span class="pop-freq">${esc(c.frequency)}</span></div>` +
+      `<div class="pop-who">${esc(c.name)} · ${esc(c.rating)} · ${onlineFor(c.logonTime)}</div>` +
+      atisLine + `</div>`;
+  }
+
+  function popAirport(code) {
+    const order = ['DEL', 'GND', 'TWR', 'APP', 'ATIS'];
+    const list = order.flatMap(f => data.controllers.filter(c => prefix(c.callsign) === code && c.facility === f));
+    if (!list.length) return '';
+    const deps = data.pilots.filter(p => p.flightPlan?.departure?.toUpperCase() === code).length;
+    const arrs = data.pilots.filter(p => p.flightPlan?.destination?.toUpperCase() === code).length;
+    const foot = deps + arrs > 0
+      ? `<div class="pop-foot"><span>${t('Departures')} ${deps}</span><span>${t('Arrivals')} ${arrs}</span></div>` : '';
+    return list.map(popRow).join('') + foot;
+  }
+
+  function popAtc(cs) {
+    const c = atcOf(cs);
+    if (!c) return '';
+    const sector = (c.facility === 'CTR' || c.facility === 'FSS') ? sectorOf(c) : null;
+    let ctrls;
+    if (sector) {
+      ctrls = data.controllers.filter(x => {
+        if (x.facility !== 'CTR' && x.facility !== 'FSS') return false;
+        const s = sectorOf(x);
+        return s && s.id === sector.id;
+      });
+      if (!ctrls.length) ctrls = [c];
+    } else {
+      ctrls = [c];
+    }
+    return ctrls.map(popRow).join('');
+  }
+
+  function popApp(code) {
+    const list = data.controllers.filter(c => prefix(c.callsign) === code && (c.facility === 'APP' || c.facility === 'ATIS'));
+    return list.map(popRow).join('');
+  }
+
+  // Keyboard: focusin on a badge or label shows the popover (tabbed into it).
+  map.getContainer().addEventListener('focusin', e => {
+    if (coarse.matches) return;
+    // Leaflet puts the focus on the marker's own element, which holds the badge.
+    const node = e.target.closest('[data-popkind]') ?? e.target.querySelector?.('[data-popkind]');
+    if (!node) return;
+    const at = [parseFloat(node.dataset.lat), parseFloat(node.dataset.lon)];
+    if (isNaN(at[0]) || isNaN(at[1])) return;
+    showPop(node.dataset.popkind, node.dataset.popkey, at);
+  });
+  map.getContainer().addEventListener('focusout', e => {
+    if (e.target.closest('[data-popkind]') ?? e.target.querySelector?.('[data-popkind]')) hidePop();
+  });
+
   // Everyone on the map at once.
   let lastPoints = [];
   document.getElementById('fit-all')?.addEventListener('click', () => {
@@ -423,10 +583,20 @@
         } else if (at) {
           // No known border for this callsign: a circle instead, smaller for a part of a sector.
           const part = String(c.callsign).split('_').filter(p => !/^\d+$/.test(p)).length > 2;
-          L.circle(at, { radius: (c.facility === 'FSS' ? 250 : part ? 90 : 180) * 1852, color: ctr, weight: 1.2, fillOpacity: .06, bubblingMouseEvents: false })
-            .on('click', open('atc', c.callsign)).addTo(sectors);
-          label(`<span class="atc-label" title="${esc(c.name)} · ${esc(c.frequency)}" style="transform:translate(-50%,-50%);display:inline-block">${esc(c.callsign)}</span>`, open('atc', c.callsign))
-            .setLatLng(at).addTo(traffic);
+          const ctrAt = at;
+          L.circle(ctrAt, { radius: (c.facility === 'FSS' ? 250 : part ? 90 : 180) * 1852, color: ctr, weight: 1.2, fillOpacity: .06, bubblingMouseEvents: false })
+            .on('click', open('atc', c.callsign))
+            .on('mouseover', () => !coarse.matches && showPop('atc', c.callsign, ctrAt))
+            .on('mouseout', () => hidePop())
+            .addTo(sectors);
+          label(
+            `<span class="atc-label${friends.has(c.cid) ? ' friend' : ''}" aria-label="${esc(c.callsign)} · ${esc(c.name)} · ${esc(c.frequency)}" ` +
+            `data-popkind="atc" data-popkey="${esc(c.callsign)}" data-lat="${ctrAt[0]}" data-lon="${ctrAt[1]}" ` +
+            `style="transform:translate(-50%,-50%);display:inline-block">${esc(c.callsign)}</span>`,
+            open('atc', c.callsign))
+            .on('mouseover', () => !coarse.matches && showPop('atc', c.callsign, ctrAt))
+            .on('mouseout', () => hidePop())
+            .setLatLng(ctrAt).addTo(traffic);
         }
         continue;
       }
@@ -434,9 +604,14 @@
       towers.set(code, [...(towers.get(code) ?? []), c]);
       // Around the airport: a controller's own position is often the middle of their whole sector file.
       const airportAt = aptLL(code) ?? at;
-      if (c.facility === 'APP' && airportAt)
-        L.circle(airportAt, { radius: 45 * 1852, color: app, weight: 1, dashArray: '4 4', fillOpacity: .05, bubblingMouseEvents: false })
-          .on('click', open('airport', code)).addTo(sectors);
+      if (c.facility === 'APP' && airportAt) {
+        const appAt = airportAt;
+        L.circle(appAt, { radius: 45 * 1852, color: app, weight: 1, dashArray: '4 4', fillOpacity: .05, bubblingMouseEvents: false })
+          .on('click', open('airport', code))
+          .on('mouseover', () => !coarse.matches && showPop('app', code, appAt))
+          .on('mouseout', () => hidePop())
+          .addTo(sectors);
+      }
     }
 
     for (const [, s] of staffed) {
@@ -445,8 +620,18 @@
         .on('click', open('atc', cs)).addTo(sectors);
       const names = s.controllers.map(c => esc(c.callsign)).join('<br>');
       const hint = esc(s.name) + ' · ' + s.controllers.map(c => esc(c.frequency)).join(', ');
-      label(`<span class="atc-label" title="${hint}" style="transform:translate(-50%,-50%);display:inline-block;text-align:center">${names}</span>`, open('atc', cs))
-        .setLatLng(s.label ?? shape.getBounds().getCenter()).addTo(traffic);
+      const rawCenter = s.label ?? shape.getBounds().getCenter();
+      const sectAt = Array.isArray(rawCenter) ? rawCenter : [rawCenter.lat, rawCenter.lng];
+      shape.on('mouseover', () => !coarse.matches && showPop('atc', cs, sectAt))
+           .on('mouseout', () => hidePop());
+      label(
+        `<span class="atc-label${s.controllers.some(c => friends.has(c.cid)) ? ' friend' : ''}" aria-label="${hint}" ` +
+        `data-popkind="atc" data-popkey="${esc(cs)}" data-lat="${sectAt[0]}" data-lon="${sectAt[1]}" ` +
+        `style="transform:translate(-50%,-50%);display:inline-block;text-align:center">${names}</span>`,
+        open('atc', cs))
+        .on('mouseover', () => !coarse.matches && showPop('atc', cs, sectAt))
+        .on('mouseout', () => hidePop())
+        .setLatLng(sectAt).addTo(traffic);
     }
 
     const order = ['DEL', 'GND', 'TWR', 'APP', 'ATIS'];
@@ -460,9 +645,16 @@
       // The ATIS chip shows its current letter.
       const chips = order.filter(f => list.some(x => x.facility === f)).map(f => f === 'ATIS'
         ? `<i class="ATIS">${esc(list.find(x => x.facility === 'ATIS').atisCode || 'i')}</i>` : `<i class="${f}">${f[0]}</i>`).join('');
-      const hint = list.map(x => `${esc(x.callsign)} ${esc(x.frequency)}`).join('&#10;');
-      label(`<span class="apt-badge" title="${hint}" style="transform:translate(-50%,-50%)">${esc(code)}${chips}</span>`, open('airport', code))
-        .setLatLng(at).addTo(traffic);
+      const hint = list.map(x => `${esc(x.callsign)} ${esc(x.frequency)}`).join(', ');
+      const aptAt = at;
+      label(
+        `<span class="apt-badge${list.some(x => friends.has(x.cid)) ? ' friend' : ''}" aria-label="${esc(code)}: ${hint}" ` +
+        `data-popkind="apt" data-popkey="${esc(code)}" data-lat="${aptAt[0]}" data-lon="${aptAt[1]}" ` +
+        `style="transform:translate(-50%,-50%)">${esc(code)}${chips}</span>`,
+        open('airport', code))
+        .on('mouseover', () => !coarse.matches && showPop('apt', code, aptAt))
+        .on('mouseout', () => hidePop())
+        .setLatLng(aptAt).addTo(traffic);
     }
 
     // Aircraft stay on the map between refreshes: a new one fades in, a known one glides to its new position and
@@ -509,9 +701,35 @@
         setTimeout(() => planeLayer.removeLayer(e.marker), 400);
       } else planeLayer.removeLayer(e.marker);
     }
+    drawFriends();
     updateCard();
+    updatePop();
     return points;
   }
+
+  // ---- friends on the air ----
+  const friendsBox = document.getElementById('map-friends');
+  let friendsHtml = '';
+  function drawFriends() {
+    if (!friendsBox || !data) return;
+    const on = [
+      ...data.pilots.filter(p => friends.has(p.cid)).map(p => ({ kind: 'pilot', cs: p.callsign, name: p.name })),
+      ...data.controllers.filter(c => c.facility !== 'OBS' && friends.has(c.cid)).map(c => ({ kind: 'atc', cs: c.callsign, name: c.name })),
+    ];
+    const html = on.length ? `<div class="mp-friends-head">${t('Friends online')} · ${on.length}</div>` + on.map(f =>
+      `<button type="button" data-select="${f.kind}|${esc(f.cs)}"><span class="cs">${esc(f.cs)}</span><span class="who">${esc(f.name)}</span></button>`).join('') : '';
+    // Only when something changed, so a hover or focus in the list survives the refresh.
+    if (html === friendsHtml) return;
+    friendsHtml = html;
+    friendsBox.innerHTML = html;
+    friendsBox.hidden = !on.length;
+  }
+  friendsBox?.addEventListener('click', e => {
+    const b = e.target.closest('[data-select]');
+    if (!b) return;
+    const [kind, key] = b.dataset.select.split('|');
+    select(kind, key, true);
+  });
 
   // ---- selection ----
   function select(kind, key, fly) {
@@ -537,6 +755,8 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') deselect(); });
   card?.addEventListener('click', e => {
     if (e.target.closest('.close')) return deselect();
+    const friend = e.target.closest('[data-friend]');
+    if (friend) { e.preventDefault(); toggleFriend(Number(friend.dataset.friend)); return; }
     const action = e.target.closest('[data-action]');
     if (action) {
       e.preventDefault();
@@ -661,14 +881,20 @@
   }
 
   // ---- cards ----
-  const head = (title, who, chips) => `
+  const star = cid => {
+    const on = friends.has(cid);
+    const label = on ? t('Remove from friends') : signedIn ? t('Add to friends') : t('Sign in to add friends');
+    return `<button class="star${on ? ' on' : ''}${starred === cid ? ' pop' : ''}" type="button" data-friend="${cid}" aria-pressed="${on}" aria-label="${label}" title="${label}">` +
+      `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></svg></button>`;
+  };
+  const head = (title, who, chips, cid) => `
     <div class="mc-head">
       <div>
         <div class="cs">${title}</div>
         ${who ? `<div class="who">${who}</div>` : ''}
         ${chips ? `<div class="mc-chips">${chips}</div>` : ''}
       </div>
-      <button class="close" type="button" aria-label="${t('Close')}">×</button>
+      ${cid != null ? star(cid) : ''}<button class="close" type="button" aria-label="${t('Close')}">×</button>
     </div>`;
   const cell = (name, value) => `<div><span>${name}</span><b>${value}</b></div>`;
   const aptLink = (code, info) => code
@@ -842,7 +1068,7 @@
         ${source ? `<div class="muted small">${source}</div>` : ''}${unresolved}</div>` : ''}
       ${fp.remarks ? `<div class="mc-block"><div class="eyebrow">${t('Remarks')}</div><div class="mc-text">${esc(fp.remarks)}</div></div>` : ''}` : '';
 
-    return head(esc(p.callsign), who, chips) + `
+    return head(esc(p.callsign), who, chips, p.cid) + `
       <div class="mc-body">
         ${flight}
         ${grid}
@@ -881,7 +1107,7 @@
     const sector = (c.facility === 'CTR' || c.facility === 'FSS') ? sectorOf(c) : null;
     const code = prefix(c.callsign);
     return head(esc(c.callsign), `<a href="/members/${c.cid}">${esc(c.name)}</a> · CID ${c.cid}`,
-      `<span class="badge accent">${esc(c.facility)}</span><span class="badge">${esc(c.rating)}</span>`) + `
+      `<span class="badge accent">${esc(c.facility)}</span><span class="badge">${esc(c.rating)}</span>`, c.cid) + `
       <div class="mc-body">
         <div class="mc-grid">
           ${cell(t('Frequency'), esc(c.frequency || '—'))}
@@ -985,6 +1211,7 @@
     }
   }
   refresh();
+  loadFriends();
   // Every 5 s: the client reports every 5 s and the site reads the server every 5 s, so the map lags by 15 s at most.
   setInterval(refresh, 5000);
 })();

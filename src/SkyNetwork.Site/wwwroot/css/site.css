@@ -687,6 +687,49 @@ details.mc-sec .mc-block + .mc-block { margin-top: 12px; }
 .apt-badge .ATIS { background: var(--f-atis); }
 .atis-text { font: 12px/1.5 var(--mono); white-space: pre-wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 6px 0 0; }
 .apt-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--paper); border: 2px solid var(--map-route); }
+
+/* ---- map hover popover ---- */
+/* Anchored to badges and sector labels; grows from the anchor with a short spring. */
+.map-pop {
+  position: absolute;
+  z-index: 1000;
+  pointer-events: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px -8px var(--shadow-strong), 0 2px 6px -2px var(--shadow);
+  min-width: 210px;
+  max-width: 300px;
+  overflow: hidden;
+}
+.map-pop[hidden] { display: none; }
+@keyframes map-pop-in {
+  from { opacity: 0; scale: .93; }
+  to   { opacity: 1; scale: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .map-pop:not([hidden]) { animation: map-pop-in 160ms cubic-bezier(.22, 1, .36, 1) both; }
+}
+.pop-row { padding: 6px 10px; }
+.pop-row + .pop-row { border-top: 1px solid var(--line); }
+.pop-head { display: flex; align-items: center; gap: 5px; }
+/* Facility chips inside the popover, same palette as the badge chips. */
+.pop-head i { font-style: normal; font: 700 10px/16px var(--mono); color: #fff; border-radius: 3px; padding: 0 4px; flex-shrink: 0; }
+.pop-head .DEL { background: var(--f-del); }
+.pop-head .GND { background: var(--f-gnd); }
+.pop-head .TWR { background: var(--f-twr); }
+.pop-head .APP { background: var(--f-app); }
+.pop-head .CTR, .pop-head .FSS { background: var(--f-ctr); }
+.pop-head .ATIS { background: var(--f-atis); }
+.pop-cs { font: 700 12px var(--mono); letter-spacing: .02em; color: var(--ink); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pop-freq { font: 600 11px var(--mono); color: var(--accent-ink); white-space: nowrap; flex-shrink: 0; }
+.pop-who { font-size: 11px; color: var(--slate); margin-top: 2px; padding-left: 27px; line-height: 1.35; }
+/* First line of the ATIS text, clipped to one line. */
+.pop-atis { font: 10.5px/1.4 var(--mono); color: var(--slate); margin-top: 1px; padding-left: 27px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+/* Departure and arrival counts below the controller rows. */
+.pop-foot { display: flex; gap: 16px; padding: 4px 10px 5px; font-size: 11px; color: var(--slate);
+  border-top: 1px solid var(--line); background: var(--surface); }
 .fir-label { background: none; border: 0; box-shadow: none; font: 700 11px var(--mono); color: var(--f-ctr); text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper); }
 .fir-label::before { display: none; }
 /* Airport codes as on radar screens: plain bold text, the bigger airports a little brighter. */
@@ -1030,3 +1073,38 @@ html.motion [data-reveal].in { opacity: 1; transform: none; }
   .terms-head .btn { margin-top: 0; }
   .terms-meta, .terms-foot { grid-template-columns: 1fr; }
 }
+
+/* ---- friends on the map: amber, like the star that marks them ---- */
+.map-page { --friend: #e59f12; }
+.plane.friend, .plane.friend .cs { color: var(--friend); }
+.plane.friend .cs::before { content: "★"; margin-right: 2px; }
+.plane.friend.selected { color: var(--accent); }
+.atc-label.friend, .apt-badge.friend { box-shadow: 0 0 0 2px var(--friend), 0 4px 12px -4px rgba(0,0,0,.35); }
+.mc-head .star { display: grid; place-items: center; flex: none; width: 28px; height: 28px; margin-left: auto; padding: 0; border: 0; border-radius: 50%; background: var(--surface); color: var(--slate); cursor: pointer;
+  transition: color var(--t-hover) var(--ease), background-color var(--t-hover) var(--ease), transform var(--t-press) var(--ease); }
+.mc-head .star + .close { margin-left: 6px; }
+.mc-head .star svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.mc-head .star:hover { color: var(--friend); background: var(--surface-2); }
+.mc-head .star:active { transform: scale(.9); }
+.mc-head .star.on { color: var(--friend); }
+.mc-head .star.on svg { fill: currentColor; }
+/* Added a moment ago: the star pops once. */
+.mc-head .star.pop svg { animation: star-pop 520ms cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes star-pop { 0% { transform: scale(.6) rotate(-20deg); } 60% { transform: scale(1.25) rotate(6deg); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mc-head .star.pop svg { animation: none; } }
+/* Friends on the air, in the map panel. */
+.mp-friends { display: grid; gap: 2px; max-height: 180px; overflow-y: auto; padding-top: 10px; border-top: 1px solid var(--line); scrollbar-width: thin; }
+.mp-friends[hidden] { display: none; }
+.mp-friends-head { margin: 0 0 4px 8px; font: 600 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--friend); }
+.mp-friends button { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 10px; background: none; color: var(--ink); text-align: left; cursor: pointer;
+  transition: background-color var(--t-hover) var(--ease); }
+.mp-friends button:hover { background: var(--surface-2); }
+.mp-friends .cs { font: 600 13px var(--mono); }
+.mp-friends .who { min-width: 0; overflow: hidden; font-size: 12.5px; color: var(--slate); text-overflow: ellipsis; white-space: nowrap; }
+/* The friends page in the account. */
+.friend-list { display: grid; gap: 8px; margin: 0 0 28px; padding: 0; list-style: none; }
+.friend-list li { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--card-bg); }
+.friend-list .who { flex: 1; min-width: 0; }
+.friend-list .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-list .status { font-size: 13px; color: var(--slate); }
+.friend-list .status.on { color: var(--live); font-weight: 600; }

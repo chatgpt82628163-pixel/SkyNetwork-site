@@ -76,6 +76,8 @@ public sealed class MemberService(Database db, IOptions<SiteOptions> options, Au
                      "network_sessions", "rating_requests", "staff_roles", "staff_notes", "member_profiles", "members",
                  })
             c.Execute($"DELETE FROM {table} WHERE cid = @cid", p, tx);
+        // Their own friends list, and their place in everyone else's.
+        c.Execute("DELETE FROM friends WHERE cid = @cid OR friend_cid = @cid", p, tx);
         RememberCid(c, tx, cid);
         tx.Commit();
         audit.Log(actor, action, cid.ToString(), string.IsNullOrWhiteSpace(reason) ? m.Name : $"{m.Name}: {reason.Trim()}");
