@@ -13,7 +13,16 @@
         @if (m.Registered is { } r) { <span> · @L["member since"] @Format.Date(r)</span> }
         @if (m.Suspended) { <span class="badge danger">@L["suspended"]</span> }</div>
     </div>
-    @if (Me.Has(Perm.ViewMembers)) { <a class="btn btn-small" style="margin-left:auto" href="/staff/members/@m.Cid">@L["Open in management"]</a> }
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      @if (Model.CanFriend)
+      {
+        <form method="post" asp-page-handler="Friend">
+          <input type="hidden" name="add" value="@(Model.IsFriend ? "false" : "true")">
+          <button class="btn btn-small" type="submit">@(Model.IsFriend ? "★ " + L["In your friends"] : "☆ " + L["Add to friends"])</button>
+        </form>
+      }
+      @if (Me.Has(Perm.ViewMembers)) { <a class="btn btn-small" href="/staff/members/@m.Cid">@L["Open in management"]</a> }
+    </div>
   </div>
   @if (m.Suspended)
   {

@@ -1005,5 +1005,23 @@ public static class Ru
         ["Right now on the network"] = "Сейчас в сети",
         ["Next event"] = "Ближайшее мероприятие",
         ["Community"] = "Сообщество",
+        // Friends on the map.
+        ["Friends"] = "Друзья",
+        ["Friends online"] = "Друзья в сети",
+        ["Add to friends"] = "Добавить в друзья",
+        ["Remove from friends"] = "Убрать из друзей",
+        ["Sign in to add friends"] = "Войдите, чтобы добавлять друзей",
+        ["In your friends"] = "В друзьях",
+        ["Add by CID"] = "Добавить по CID",
+        ["On the air as"] = "В эфире как",
+        ["offline"] = "не в сети",
+        ["Remove"] = "Убрать",
+        ["Enter the member's CID"] = "Введите CID участника",
+        ["Added to friends"] = "Добавлен в друзья",
+        ["You cannot add yourself"] = "Себя добавить нельзя",
+        ["Your friends list is full"] = "Список друзей заполнен",
+        ["Reload the page and try again"] = "Обновите страницу и попробуйте снова",
+        ["Friends are highlighted on the map and listed there when they are on the air. They are not told that you added them."] = "Друзья выделены на карте, а когда они в эфире — видны в списке на карте. Им не сообщается, что вы их добавили.",
+        ["No friends yet. Add them here by CID, or with the star in a pilot's or controller's card on the map."] = "Друзей пока нет. Добавьте их здесь по CID или звёздочкой в карточке пилота или диспетчера на карте.",
     };
 }

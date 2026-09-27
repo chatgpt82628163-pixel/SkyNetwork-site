@@ -200,6 +200,12 @@ public sealed class Database
             CREATE TABLE IF NOT EXISTS site_counters (name TEXT PRIMARY KEY, value INTEGER NOT NULL);
             INSERT OR IGNORE INTO site_counters (name, value) SELECT 'last_cid', COALESCE(MAX(cid), 0) FROM members;
             """);
+        // Friends: members a member follows on the map (one way: the other person is not asked or told).
+        c.Execute("""
+            CREATE TABLE IF NOT EXISTS friends (
+                cid INTEGER NOT NULL, friend_cid INTEGER NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (cid, friend_cid));
+            CREATE INDEX IF NOT EXISTS ix_friends_friend ON friends (friend_cid);
+            """);
 
     }
 
