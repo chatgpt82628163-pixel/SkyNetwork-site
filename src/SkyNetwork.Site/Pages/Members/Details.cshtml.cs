@@ -12,7 +12,8 @@ public sealed class DetailsModel(MemberService members, SessionService sessions)
 
     public IActionResult OnGet(long cid)
     {
-        if (members.Find(cid) is not { } m) return NotFound();
+        // A registration whose email is not confirmed does not count: no public profile.
+        if (members.FindConfirmed(cid) is not { } m) return NotFound();
         Member = m;
         Hours = sessions.Hours(cid);
         Sessions = sessions.Recent(cid, 20);

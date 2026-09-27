@@ -24,24 +24,37 @@
     <a href="@Href("")" class="@(Model.Filter == "" ? "on" : "")">@L["All"]</a>
     <a href="@Href("suspicious")" class="@(Model.Filter == "suspicious" ? "on" : "")">@L["Suspicious"]</a>
     <a href="@Href("suspended")" class="@(Model.Filter == "suspended" ? "on" : "")">@L["Suspended"]</a>
+    <a href="@Href("unconfirmed")" class="@(Model.Filter == "unconfirmed" ? "on" : "")">@L["Not confirmed"]@if (Model.Unconfirmed > 0) { <b class="seg-count">@Model.Unconfirmed</b> }</a>
   </nav>
 </div>
-@if (Model.CanSuspend && Model.Results.Count > 0)
+@if (Model.Filter == "unconfirmed")
 {
-  @* Tick members in the list and suspend them together: the ticks belong to this form through form="bulk" (js/staff-members.js). *@
-  <form method="post" asp-page="/Staff/Members" asp-page-handler="Suspend" id="bulk" class="bulk-bar" data-bulk onsubmit="return confirm('@L["Suspend the ticked members?"]')">
+  <p class="muted small members-note">@L["They registered but have not opened the link in the letter yet: they cannot connect to the network, are not counted as members and have no public profile. Registrations not confirmed within two days are deleted automatically."]</p>
+}
+@{ bool bulk = (Model.CanSuspend || Model.CanDelete) && Model.Results.Count > 0; }
+@if (bulk)
+{
+  @* Tick members in the list and suspend or delete them together: the ticks belong to this form through form="bulk" (js/staff-members.js). *@
+  <form method="post" asp-page="/Staff/Members" asp-page-handler="Suspend" id="bulk" class="bulk-bar" data-bulk>
     <input type="hidden" name="q" value="@Model.Query">
     <input type="hidden" name="show" value="@Model.Filter">
     <span class="bulk-count" data-bulk-count data-template="@L["Ticked: {0}"]">@L.F("Ticked: {0}", 0)</span>
     <input name="reason" value="@L["Junk registration"]" maxlength="200" aria-label="@L["Reason"]">
-    <button class="btn btn-danger" type="submit" data-bulk-go>@L["Suspend ticked"]</button>
+    @if (Model.CanSuspend)
+    {
+      <button class="btn btn-danger" type="submit" data-bulk-go onclick="return confirm('@L["Suspend the ticked members?"]')">@L["Suspend ticked"]</button>
+    }
+    @if (Model.CanDelete)
+    {
+      <button class="btn btn-danger" type="submit" asp-page-handler="Delete" data-bulk-go onclick="return confirm('@L["Delete the ticked accounts for good? Their flights, hours and tickets go too; it cannot be undone."]')">@L["Delete ticked"]</button>
+    }
   </form>
 }
 <div class="table-wrap">
   <table class="members-table">
     <thead>
       <tr>
-        @if (Model.CanSuspend) { <th class="tick"><input type="checkbox" data-bulk-all aria-label="@L["Tick all"]"></th> }
+        @if (bulk) { <th class="tick"><input type="checkbox" data-bulk-all aria-label="@L["Tick all"]"></th> }
         <th class="cid">CID</th><th>@L["Member"]</th><th class="rating">@L["Ratings"]</th><th class="date">@L["Registered"]</th><th class="state">@L["Status"]</th>
       </tr>
     </thead>
@@ -50,7 +63,7 @@
     {
       string? why = SignupGuard.Suspicion(m);
       <tr class="@(why != null ? "suspicious" : null)">
-        @if (Model.CanSuspend) { <td class="tick"><input type="checkbox" name="cids" value="@m.Cid" form="bulk" aria-label="@m.Cid"></td> }
+        @if (bulk) { <td class="tick"><input type="checkbox" name="cids" value="@m.Cid" form="bulk" aria-label="@m.Cid"></td> }
         <td class="mono"><a href="/staff/members/@m.Cid">@m.Cid</a></td>
         <td class="who"><a href="/staff/members/@m.Cid" title="@m.Name">@m.Name</a><span title="@m.Email">@m.Email</span></td>
         <td class="rating mono small">@m.DisplayShort · @PilotRatings.Pilot.Short(m.PilotRating) · @PilotRatings.Military.Short(m.MilitaryRating)</td>
@@ -61,6 +74,7 @@
             <span class="badge danger">@L["suspended"]</span>
             @if (m.SuspensionEnds is { } until) { <span class="muted small until">@L["until"] @Format.Utc(until)</span> }
           }
+          else if (!m.EmailVerified) { <span class="badge warn" title="@L["email not confirmed"]">@L["not confirmed"]</span> }
           else { <span class="badge ok">@L["active"]</span> }
           @if (why != null) { <span class="badge warn" title="@L[why]">@L["suspicious"]</span> }
         </div></td>

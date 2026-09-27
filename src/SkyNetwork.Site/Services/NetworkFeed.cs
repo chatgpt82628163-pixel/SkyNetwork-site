@@ -138,7 +138,8 @@ public sealed class NetworkFeed(IOptions<SiteOptions> options, Database db, IHtt
         {
             if (_open.TryGetValue(key, out var open))
             {
-                if (open.Details.Length == 0 && x.Details.Length > 0)
+                // The plan that came after the connection, or a new one filed since (also after a reconnect without a plan).
+                if (x.Details.Length > 0 && open.Details != x.Details)
                 {
                     c.Execute("UPDATE network_sessions SET details = @Details WHERE id = @id", new { x.Details, id = open.Id });
                     _open[key] = (open.Id, x.Details);

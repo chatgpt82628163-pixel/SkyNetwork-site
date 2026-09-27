@@ -45,6 +45,8 @@ public sealed class AuditService(Database db)
         "division-key" => "Division API key",
         "connect-client" => "Sign-in site",
         "rating-request" => "Rating request",
+        "account-delete" => "Account deleted",
+        "account-expired" => "Unconfirmed registration deleted",
         _ => action,
     };
 }

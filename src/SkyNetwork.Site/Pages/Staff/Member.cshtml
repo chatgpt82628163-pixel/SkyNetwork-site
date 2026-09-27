@@ -9,7 +9,8 @@
   <div>
     <h1 style="font-size:28px;margin:0">@m.Name</h1>
     <div class="muted">CID <span class="mono">@m.Cid</span>
-      @if (m.Suspended) { <span class="badge danger">@L["suspended"]</span> }</div>
+      @if (m.Suspended) { <span class="badge danger">@L["suspended"]</span> }
+      @if (!m.EmailVerified) { <span class="badge warn">@L["email not confirmed"]</span> }</div>
     <div class="muted small">@string.Join(" · ", new[]
         {
             m.Email ?? L["no email"],
@@ -144,6 +145,16 @@
       }
       <p class="muted small">@L["Supervisor (SUP), instructor (I1–I3) and administrator (ADM) are ratings; their rights apply automatically."]</p>
       <div><button class="btn btn-primary" type="submit">@L["Save roles"]</button></div>
+    </form>
+  }
+  @if (Model.CanDelete)
+  {
+    <form method="post" asp-page-handler="Delete" class="card form danger-zone">
+      <h3>@L["Delete account"]</h3>
+      <p class="muted small">@L["The profile, flight plans, flights and hours, bookings, tickets, notes and sign-ins to other sites are deleted for good. The action history keeps who deleted the account and why; the CID is never given to anyone else."]</p>
+      <label>@L["Reason"]<input name="reason" required maxlength="300" placeholder="@L["Junk registration"]"></label>
+      <label>@L["Type the CID to confirm"]<input name="confirmCid" required inputmode="numeric" autocomplete="off" placeholder="@m.Cid"></label>
+      <div><button class="btn btn-danger" type="submit">@L["Delete the account"]</button></div>
     </form>
   }
 </div>

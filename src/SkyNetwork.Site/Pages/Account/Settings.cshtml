@@ -54,5 +54,19 @@
         <button class="btn btn-small" type="submit">@L["Withdraw access"]</button>
       </form>
     }
+    <h2 id="delete" style="font-size:20px;margin-top:40px">@L["Delete account"]</h2>
+    @if (Model.Me.StaffRank != 0)
+    {
+      <p class="muted small">@L["Members of the team with a rank cannot delete their account: ask an administrator to take the rank away first."]</p>
+    }
+    else
+    {
+      <p class="muted small">@L["Your profile, flight plans, flights and hours, bookings, support tickets and sign-ins to other sites are deleted for good. The CID is not given to anyone else. You can register again later, but with a new CID and the ratings start over."]</p>
+      <form method="post" asp-page-handler="Delete" class="form danger-zone">
+        <label>@L["Password"]<input name="password" type="password" required autocomplete="current-password"></label>
+        <label class="check"><input type="checkbox" name="understood" value="true" required> <span>@L["I understand that this cannot be undone"]</span></label>
+        <div><button class="btn btn-danger" type="submit" onclick="return confirm('@L["Delete your account for good?"]')">@L["Delete my account"]</button></div>
+      </form>
+    }
   </div>
 </div>

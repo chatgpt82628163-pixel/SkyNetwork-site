@@ -41,7 +41,7 @@ public static class DivisionApi
 
         // Any member: an academy checks a CID before enrolling someone.
         api.MapGet("/members/{cid:long}", (long cid, MemberService members) =>
-            members.Find(cid) is { } m ? Results.Ok(MemberDto(m)) : Problem(404, "member_not_found", "No member with this CID"));
+            members.FindConfirmed(cid) is { } m ? Results.Ok(MemberDto(m)) : Problem(404, "member_not_found", "No member with this CID"));
 
         api.MapGet("/rating-requests", (HttpContext ctx, DivisionService divisions, string? status, long? cid) =>
             divisions.Requests(status is { Length: > 0 } && status != "all" ? status : null, Current(ctx).Id, cid).Select(RequestDto));

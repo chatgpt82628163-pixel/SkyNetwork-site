@@ -1,11 +1,16 @@
 @inject SupportService Support
 @inject DivisionService Divisions
+@inject SkyNetwork.Site.Services.Health.HealthMonitor Health
 @{
     Layout = "_Layout";
     string path = Context.Request.Path.Value ?? "";
     string A(string p) => (p == "/staff" ? path.Equals(p, StringComparison.OrdinalIgnoreCase) : path.StartsWith(p, StringComparison.OrdinalIgnoreCase)) ? "active" : "";
     int openTickets = Support.OpenTickets();
     int pendingRatings = Me.Has(Perm.ApproveRatings) ? Divisions.PendingCount() : 0;
+    // Problems of the infrastructure right now, next to the status link.
+    bool seesStatus = Me.Has(Perm.SystemStatus);
+    var statusProblems = Health.Results.Where(r => seesStatus && r.Level >= SkyNetwork.Site.Services.Health.HealthLevel.Warning).ToList();
+    bool statusDown = statusProblems.Any(r => r.Level == SkyNetwork.Site.Services.Health.HealthLevel.Error);
 }
 <div class="staff-bar">
   <div class="wrap">
@@ -20,6 +25,7 @@
     @if (Me.Has(Perm.ViewMembers)) { <a href="/staff/members" class="@A("/staff/members")">@L["Members"]</a> }
     <a href="/staff/team" class="@A("/staff/team")">@L["Team"]</a>
     @if (Me.Has(Perm.Online)) { <a href="/staff/online" class="@A("/staff/online")">@L["On the air"]</a> }
+    @if (Me.Has(Perm.SystemStatus)) { <a href="/staff/status" class="@A("/staff/status")">@L["Network status"] @if (statusProblems.Count > 0) { <span class="count @(statusDown ? "danger" : "warn")" title="@L["Problems right now"]">@statusProblems.Count</span> }</a> }
     @if (Me.Has(Perm.Tickets) || Me.Has(Perm.ApproveRatings)) { <div class="side-title">@L["Work"]</div> }
     @if (Me.Has(Perm.Tickets)) { <a href="/staff/tickets" class="@A("/staff/tickets")">@L["Support tickets"] @if (openTickets > 0) { <span class="count">@openTickets</span> }</a> }
     @if (Me.Has(Perm.ManageDivisions)) { <a href="/staff/connect" class="@A("/staff/connect")">@L["Sign-in for other sites"]</a> }

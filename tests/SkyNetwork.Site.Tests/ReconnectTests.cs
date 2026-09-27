@@ -40,6 +40,12 @@ public class ReconnectTests
         Assert.Equal(1, sessions.Hours(1000012).PilotSessions);
         Assert.Equal(2, feed.Track("AFL1234").Count); // the track before the crash is still there
 
+        // Back again without a plan, then a new plan filed: the flight shows the new one.
+        feed.Ingest(Nobody);
+        feed.Ingest(Pilot("null", 56.0));
+        feed.Ingest(Pilot("\"*A:I:A20N:450:UUEE:1200:0:FL350:ULMM:1:10:3:0:ULLO:/V/:DEMO5 DM100\"", 56.0));
+        Assert.Equal("A20N UUEE→ULMM", Assert.Single(sessions.Recent(1000012)).Details);
+
         // Landed, left, and later back with the plan home: another flight.
         feed.Ingest(Nobody);
         feed.Ingest(Pilot(BackToUuee, 59.8));

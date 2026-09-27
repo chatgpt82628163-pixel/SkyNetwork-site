@@ -26,6 +26,8 @@ public class LocalizationTests
         new(@"\b(?:Error|Message)\s*=\s*\w+\s*\?\s*""((?:[^""\\]|\\.)+)""\s*:\s*""(?:[^""\\]|\\.)+"""),
         new(@"\b(?:Error|Message)\s*=\s*\w+\s*\?\s*""(?:[^""\\]|\\.)+""\s*:\s*""((?:[^""\\]|\\.)+)"""),
         new(@"return ""([A-Z{][^""]* [^""]*)"";"),
+        // Texts of the status page, translated when the page shows them.
+        new(@"new Say\(""((?:[^""\\]|\\.)+)"""),
     ];
 
     private static IEnumerable<string> UsedKeys()
@@ -54,7 +56,7 @@ public class LocalizationTests
         foreach (var title in ConnectService.Scopes.Values) yield return title;
         foreach (var action in new[] { "rating", "staff-rank", "pilot-rating", "military-rating", "suspend", "unsuspend", "password-reset", "roles", "note",
                      "event", "event-delete", "news", "news-delete", "booking-delete", "ticket",
-                     "division-key", "rating-request", "connect-client" })
+                     "division-key", "rating-request", "connect-client", "account-delete", "account-expired" })
             yield return AuditService.Title(action);
     }
 

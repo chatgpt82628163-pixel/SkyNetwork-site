@@ -20,6 +20,7 @@
       <div class="alert error">
         <div><b>@L["Confirm your email"]</b></div>
         <div>@L.F("We sent a link to {0}. Open it to confirm the address: until then you cannot connect to the network.", m.Email ?? "")</div>
+        <div class="small" style="margin-top:4px">@L["No letter within a few minutes? Look in the Spam folder and mark it as not spam, so our next letters reach your inbox."]</div>
         @if (Model.Resent == true) { <div>@L["A new letter is on its way."]</div> }
         @if (Model.Resent == false) { <div>@L["A letter was sent a moment ago: wait two minutes before asking for another one."]</div> }
         <form method="post" asp-page-handler="Resend" class="inline-form" style="margin-top:8px">

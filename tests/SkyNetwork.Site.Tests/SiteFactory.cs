@@ -22,6 +22,9 @@ public sealed class SiteFactory(Dictionary<string, string>? settings = null) : W
         // Tests fill in the registration form at once and register many members; SignupProtectionTests switch these on.
         builder.UseSetting("Site:SignupMinSeconds", "0");
         builder.UseSetting("Site:RegistrationsPerDayPerAddress", "10000");
+        // The status page checks only when a test asks (StatusPageTests), and never GitHub.
+        builder.UseSetting("Site:HealthCheckSeconds", "0");
+        builder.UseSetting("Site:ReleaseRepos", "");
         if (settings != null)
             foreach (var (key, value) in settings) builder.UseSetting(key, value);
         builder.UseEnvironment(Environment.GetEnvironmentVariable("SITE_TEST_ENV") ?? "Production");

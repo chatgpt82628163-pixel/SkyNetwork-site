@@ -29,6 +29,10 @@ public enum Perm
     ManageDivisions = 1 << 16,
     /// <summary>Approve or decline the rating requests divisions send after an exam.</summary>
     ApproveRatings = 1 << 17,
+    /// <summary>The status page: how the servers and services of the network are doing.</summary>
+    SystemStatus = 1 << 18,
+    /// <summary>Delete members' accounts (administrators only).</summary>
+    DeleteAccounts = 1 << 19,
     All = ~0,
 }
 
@@ -50,7 +54,7 @@ public static class Permissions
 
     private const Perm Supervisor = Perm.StaffArea | Perm.ViewMembers | Perm.Suspend | Perm.Notes | Perm.Tickets | Perm.Online |
                                     Perm.Bookings | Perm.Audit | Perm.Events | Perm.News | Perm.PilotRatings |
-                                    Perm.EditNames | Perm.ApproveRatings;
+                                    Perm.EditNames | Perm.ApproveRatings | Perm.SystemStatus;
 
     private const Perm Instructor = Perm.StaffArea | Perm.ViewMembers | Perm.Notes | Perm.EditRatings | Perm.Online |
                                     Perm.PilotRatings;
@@ -67,7 +71,8 @@ public static class Permissions
             {
                 "events" => Perm.StaffArea | Perm.Events,
                 "news" => Perm.StaffArea | Perm.News,
-                "support" => Perm.StaffArea | Perm.Tickets | Perm.ViewMembers | Perm.ResetPasswords,
+                // Setting someone else's password stays with administrators.
+                "support" => Perm.StaffArea | Perm.Tickets | Perm.ViewMembers,
                 "fsup" => Perm.StaffArea | Perm.Online,
                 _ => Perm.None,
             };
@@ -114,4 +119,11 @@ public static class Permissions
     public static bool CanSuspend(Member actor, Perm actorPerms, Member target) =>
         actorPerms.HasFlag(Perm.Suspend) && actor.Cid != target.Cid &&
         (actor.StaffRank == Ratings.ADM || target.StaffRank == 0);
+
+    /// <summary>
+    /// Who may delete whose account: administrators, never their own (that is done in the account settings) and
+    /// never a member of the team with a rank (take the rank away first).
+    /// </summary>
+    public static bool CanDelete(Member actor, Perm actorPerms, Member target) =>
+        actorPerms.HasFlag(Perm.DeleteAccounts) && actor.Cid != target.Cid && target.StaffRank == 0;
 }

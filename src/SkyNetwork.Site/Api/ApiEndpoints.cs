@@ -138,7 +138,8 @@ public static class ApiEndpoints
 
         v1.MapGet("/members/{cid:long}", (long cid, MemberService members, SessionService sessions) =>
         {
-            var m = members.Find(cid);
+            // A registration whose email is not confirmed does not count: not shown to anyone.
+            var m = members.FindConfirmed(cid);
             if (m == null) return Results.NotFound();
             var h = sessions.Hours(cid);
             return Results.Ok(new
@@ -158,7 +159,7 @@ public static class ApiEndpoints
         v1.MapGet("/members/{cid:long}/avatar", (long cid, MemberService members, HttpContext ctx) =>
         {
             ctx.Response.Headers.CacheControl = "public, max-age=300";
-            return members.Find(cid) is { AvatarUrl: { } url } ? Results.Redirect(url) : Results.NotFound();
+            return members.FindConfirmed(cid) is { AvatarUrl: { } url } ? Results.Redirect(url) : Results.NotFound();
         });
 
         v1.MapGet("/members/{cid:long}/sessions", (long cid, SessionService sessions) =>

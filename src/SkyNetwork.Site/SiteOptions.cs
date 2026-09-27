@@ -46,4 +46,26 @@ public sealed class SiteOptions
     /// back to it after signing in with SkyNetwork Connect. Empty turns this off.
     /// </summary>
     public string DiscordBotUrl { get; set; } = "http://127.0.0.1:8090";
+
+    /// <summary>
+    /// Hours after which a registration whose email is still not confirmed (and whose last link has expired) is
+    /// deleted; 0 keeps them. Only while mail is set up: without it nobody is asked to confirm.
+    /// </summary>
+    public int UnconfirmedHours { get; set; } = 48;
+
+    // ---- the status page (/staff/status) ----
+
+    /// <summary>Seconds between the infrastructure checks of the status page; 0 turns the background checks off.</summary>
+    public int HealthCheckSeconds { get; set; } = 30;
+    /// <summary>The site's public address for the outside and HTTPS check; empty: the Mail SiteUrl, else the FSD host name.</summary>
+    public string PublicUrl { get; set; } = "";
+    /// <summary>systemd services of the network server, the voice server, the Discord bot and the web server; empty skips one.</summary>
+    public string FsdService { get; set; } = "skynet-fsd";
+    public string VoiceService { get; set; } = "skynet-voice";
+    public string BotService { get; set; } = "skynetwork-bot";
+    public string WebService { get; set; } = "caddy";
+    /// <summary>UDP port of the voice server.</summary>
+    public int VoicePort { get; set; } = 3782;
+    /// <summary>GitHub repositories of the programs whose latest release the status page checks: "owner/repo=Name", comma-separated.</summary>
+    public string ReleaseRepos { get; set; } = "Anntixs/skypilot=SkyPilot,Anntixs/Network-ATC=Network-ATC";
 }
