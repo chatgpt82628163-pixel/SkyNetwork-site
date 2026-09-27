@@ -29,8 +29,10 @@
 
   const firOutline = L.layerGroup();              // every sector border (switchable)
   const sectors = L.layerGroup().addTo(map);      // staffed sectors and approach areas
-  const traffic = L.layerGroup().addTo(map);      // aircraft, controller labels, airport badges
+  const traffic = L.layerGroup().addTo(map);      // controller labels, airport badges
+  const planeLayer = L.layerGroup().addTo(map);   // aircraft: kept between refreshes, so they glide instead of jumping
   const routeLayer = L.layerGroup().addTo(map);   // the selected flight
+  const calm = matchMedia('(prefers-reduced-motion: reduce)');
 
   const card = document.getElementById('map-card');
   const search = document.getElementById('map-search');
@@ -141,13 +143,56 @@
   };
   const open = (kind, key) => () => compact ? location.href = '/map#' + encodeURIComponent(key) : select(kind, key, false);
 
-  // A dot until the heading is known (the server reads it from the position packet, older ones cannot).
   // Always the aircraft symbol (pointing north when the heading is unknown) with the callsign underneath.
-  const plane = (p, isSelected) => L.divIcon({
-    className: 'plane' + ((p.onGround ?? p.groundspeed < 40) ? ' ground' : '') + (isSelected ? ' selected' : '') + (p.heading == null ? ' nohdg' : ''),
+  const planeClass = (p, isSelected) =>
+    'plane' + ((p.onGround ?? p.groundspeed < 40) ? ' ground' : '') + (isSelected ? ' selected' : '') + (p.heading == null ? ' nohdg' : '');
+  const plane = (p, isSelected, turn, born) => L.divIcon({
+    className: planeClass(p, isSelected) + (born ? ' born' : ''),
     iconSize: [22, 22], iconAnchor: [11, 11],
-    html: `<span class="cs">${esc(p.callsign)}</span><svg width="22" height="22" viewBox="0 0 24 24" style="transform:rotate(${p.heading ?? 0}deg)"><path fill="currentColor" d="M12 2c.8 0 1.3.7 1.3 1.6v5.6l7.7 4.6v2l-7.7-2.3v4.4l2.2 1.7v1.6L12 20.2l-3.5 1v-1.6l2.2-1.7v-4.4L3 15.8v-2l7.7-4.6V3.6C10.7 2.7 11.2 2 12 2z"/></svg>`
+    html: `<span class="cs">${esc(p.callsign)}</span><svg width="22" height="22" viewBox="0 0 24 24" style="transform:rotate(${turn}deg)"><path fill="currentColor" d="M12 2c.8 0 1.3.7 1.3 1.6v5.6l7.7 4.6v2l-7.7-2.3v4.4l2.2 1.7v1.6L12 20.2l-3.5 1v-1.6l2.2-1.7v-4.4L3 15.8v-2l7.7-4.6V3.6C10.7 2.7 11.2 2 12 2z"/></svg>`
   });
+
+  // ---- aircraft motion ----
+  // Positions come every 5 s. Each aircraft glides from where it is on screen now to the new position over the
+  // same 5 s, so it moves steadily instead of jumping (a new glide starts from the on-screen position, never from
+  // the old target). A jump of more than 20 nm (a reconnect or a slew) is not animated; neither is anything when
+  // the visitor asked for less motion.
+  const GLIDE_MS = 5000;
+  const planes = new Map();        // callsign → { marker, look, turn, tip }
+  const glides = new Map();        // marker → { from, to, start }
+  let glideFrame = 0, flying = false;
+  function glide(marker, to) {
+    const cur = marker.getLatLng();
+    let lng = to[1];
+    while (lng - cur.lng > 180) lng -= 360;
+    while (lng - cur.lng < -180) lng += 360;
+    const g = glides.get(marker);
+    if (g && g.to[0] === to[0] && g.to[1] === lng) return;           // already on its way there
+    if (cur.lat === to[0] && cur.lng === lng) return;
+    if (calm.matches || distNm([cur.lat, cur.lng], [to[0], lng]) > 20) {
+      glides.delete(marker);
+      marker.setLatLng([to[0], lng]);
+      return;
+    }
+    glides.set(marker, { from: [cur.lat, cur.lng], to: [to[0], lng], start: performance.now() });
+    if (!glideFrame) glideFrame = requestAnimationFrame(step);
+  }
+  function step(now) {
+    glideFrame = 0;
+    for (const [m, g] of glides) {
+      const k = Math.min(1, (now - g.start) / GLIDE_MS);
+      m.setLatLng([g.from[0] + (g.to[0] - g.from[0]) * k, g.from[1] + (g.to[1] - g.from[1]) * k]);
+      if (k >= 1) glides.delete(m);
+    }
+    // Following: the map moves with the aircraft on screen (not while it flies to it).
+    if (follow && !flying && selected?.kind === 'pilot') {
+      const m = planes.get(selected.key)?.marker;
+      if (m && glides.has(m)) map.panTo(m.getLatLng(), { animate: false });
+    }
+    if (glides.size) glideFrame = requestAnimationFrame(step);
+  }
+  // The shortest turn to the new heading (350° → 10° turns 20° right, not 340° left).
+  const turnTo = (from, heading) => from + ((((heading - from) % 360) + 540) % 360 - 180);
 
   // ---- reference data ----
   // Sector borders (see data/firs.LICENSE.txt): features by id, callsign prefixes → sector, upper sectors → several FIRs.
@@ -420,16 +465,49 @@
         .setLatLng(at).addTo(traffic);
     }
 
+    // Aircraft stay on the map between refreshes: a new one fades in, a known one glides to its new position and
+    // turns to its new heading, one that left fades out.
+    const online = new Set();
     for (const p of data.pilots) {
       if (p.latitude == null) continue;
       const at = [p.latitude, p.longitude];
       points.push(at);
+      online.add(p.callsign);
       const isSelected = selected?.kind === 'pilot' && selected.key === p.callsign;
       const fp = p.flightPlan;
-      L.marker(at, { icon: plane(p, isSelected), zIndexOffset: isSelected ? 1000 : 0 })
-        .bindTooltip(esc(p.callsign) + (fp?.aircraft ? ' · ' + esc(fp.aircraft) : ''), { direction: 'top', offset: [0, -12] })
-        .on('click', open('pilot', p.callsign))
-        .addTo(traffic);
+      const look = planeClass(p, isSelected), tip = esc(p.callsign) + (fp?.aircraft ? ' · ' + esc(fp.aircraft) : '');
+      const e = planes.get(p.callsign);
+      if (!e) {
+        const turn = p.heading ?? 0;
+        const marker = L.marker(at, { icon: plane(p, isSelected, turn, !calm.matches), zIndexOffset: isSelected ? 1000 : 0 })
+          .bindTooltip(tip, { direction: 'top', offset: [0, -12] })
+          .on('click', open('pilot', p.callsign))
+          .addTo(planeLayer);
+        planes.set(p.callsign, { marker, look, turn, tip });
+        continue;
+      }
+      if (p.heading != null) e.turn = turnTo(e.turn, p.heading);
+      if (e.look !== look) {
+        // Selected or not, on the ground or not: a new symbol (the selection ring plays once).
+        e.look = look;
+        e.marker.setIcon(plane(p, isSelected, e.turn, false));
+        e.marker.setZIndexOffset(isSelected ? 1000 : 0);
+      } else {
+        const svg = e.marker.getElement()?.querySelector('svg');
+        if (svg) svg.style.transform = `rotate(${e.turn}deg)`;
+      }
+      if (e.tip !== tip) { e.tip = tip; e.marker.setTooltipContent(tip); }
+      glide(e.marker, at);
+    }
+    for (const [cs, e] of planes) {
+      if (online.has(cs)) continue;
+      planes.delete(cs);
+      glides.delete(e.marker);
+      const node = e.marker.getElement();
+      if (node && !calm.matches) {
+        node.classList.add('gone');
+        setTimeout(() => planeLayer.removeLayer(e.marker), 400);
+      } else planeLayer.removeLayer(e.marker);
     }
     updateCard();
     return points;
@@ -453,6 +531,9 @@
     render();
   }
   map.on('click', deselect);
+  // Dragging the map stops following, the way map apps do (otherwise the map would pull straight back).
+  map.on('dragstart', () => { if (follow) { follow = false; updateCard(); } });
+  map.on('moveend', () => { flying = false; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') deselect(); });
   card?.addEventListener('click', e => {
     if (e.target.closest('.close')) return deselect();
@@ -476,7 +557,17 @@
     const [kind, key] = target.dataset.select.split('|');
     select(kind, key, true);
   });
-  card?.addEventListener('toggle', e => { const s = e.target.dataset?.sec; if (s) sections[s] = e.target.open; }, true);
+  // A section opened by hand is remembered across refreshes; the graph draws itself from left to right.
+  let byHand = false;
+  card?.addEventListener('pointerdown', e => { if (e.target.closest('summary')) byHand = true; });
+  card?.addEventListener('keydown', e => { if (e.target.closest('summary')) byHand = true; });
+  card?.addEventListener('toggle', e => {
+    const s = e.target.dataset?.sec;
+    if (!s) return;
+    sections[s] = e.target.open;
+    if (byHand && s === 'graph' && e.target.open && !calm.matches) e.target.querySelector('.mc-chart')?.classList.add('draw');
+    byHand = false;
+  }, true);
 
   const pilotOf = cs => data?.pilots.find(p => p.callsign === cs);
   const atcOf = cs => data?.controllers.find(c => c.callsign === cs);
@@ -486,7 +577,9 @@
     const { kind, key } = selected;
     if (kind === 'pilot') {
       const p = pilotOf(key);
-      if (p?.latitude != null) map.flyTo([p.latitude, p.longitude], Math.max(map.getZoom(), 6), { duration: .8 });
+      // Where the aircraft is on screen (it glides a few seconds behind the last position).
+      const shown = planes.get(key)?.marker.getLatLng();
+      if (p?.latitude != null) { flying = true; map.flyTo(shown ?? [p.latitude, p.longitude], Math.max(map.getZoom(), 6), { duration: .8 }); }
     } else if (kind === 'atc') {
       const c = atcOf(key), sector = c && sectorOf(c);
       if (sector) map.flyToBounds(L.geoJSON(sector.features).getBounds(), { padding: [40, 40], duration: .8 });
@@ -583,15 +676,66 @@
     : '<b>—</b>';
   const section = (key, title, body) => `<details class="mc-sec" data-sec="${key}"${sections[key] ? ' open' : ''}><summary>${title}<i></i></summary>${body}</details>`;
 
+  // The card slides in from its edge (from below on a phone) and goes back the same way. Every animation starts
+  // from what is on screen, so a card grabbed again while it closes simply turns round. The card is redrawn on
+  // every refresh; only the card itself animates, so a redraw never restarts anything.
+  let cardKey = '', cardMotion = null;
+  const OUT = 'cubic-bezier(.22, 1, .36, 1)';
+  const away = () => matchMedia('(max-width: 760px)').matches ? 'translateY(40px)' : 'translateX(28px) scale(.98)';
+  const onScreen = () => { const cs = getComputedStyle(card); return { opacity: cs.opacity, transform: cs.transform }; };
+  function showCard() {
+    card.classList.remove('closing');
+    const from = cardMotion?.playState === 'running' ? onScreen() : { opacity: 0, transform: calm.matches ? 'none' : away() };
+    cardMotion?.cancel();
+    cardMotion = card.animate([from, { opacity: 1, transform: 'none' }], { duration: calm.matches ? 160 : 460, easing: OUT });
+  }
+  function hideCard() {
+    if (card.hidden || card.classList.contains('closing')) return;
+    cardKey = '';
+    const from = onScreen();
+    cardMotion?.cancel();
+    card.classList.add('closing');
+    const motion = cardMotion = card.animate([from, { opacity: 0, transform: calm.matches ? 'none' : away() }],
+      { duration: calm.matches ? 120 : 220, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards' });
+    motion.onfinish = () => {
+      if (cardMotion !== motion) return;
+      card.hidden = true;
+      card.classList.remove('closing');
+      motion.cancel();
+    };
+  }
+  function swapCard() {
+    if (cardMotion?.playState === 'running' || calm.matches) return;
+    cardMotion = card.animate([{ opacity: .4, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: OUT });
+  }
+  // The flight's progress bar moves on from where it is on screen (a newly opened flight fills up from the start).
+  function growProgress(fromPct) {
+    const bar = card.querySelector('.mc-progress i'), dot = card.querySelector('.mc-progress b');
+    if (!bar || !dot || calm.matches) return;
+    const to = bar.style.width;
+    if (Math.abs(parseFloat(to) - fromPct) < 0.5) return;
+    bar.style.width = dot.style.left = fromPct + '%';
+    void bar.offsetWidth;
+    bar.style.width = dot.style.left = to;
+  }
+
   function updateCard() {
     if (!card) return;
-    if (!selected || !data) { routeLayer.clearLayers(); drawn = null; card.hidden = true; return; }
+    if (!selected || !data) { routeLayer.clearLayers(); drawn = null; hideCard(); return; }
     const { kind, key } = selected;
     if (kind !== 'pilot') { routeLayer.clearLayers(); drawn = null; }
+    const id = kind + '|' + key;
+    const opening = card.hidden || card.classList.contains('closing');
+    const swapping = !opening && id !== cardKey;
+    const oldBar = opening || swapping ? null : card.querySelector('.mc-progress i');
+    const shownPct = oldBar ? oldBar.getBoundingClientRect().width / Math.max(1, oldBar.parentElement.getBoundingClientRect().width) * 100 : 0;
     const scroll = card.scrollTop;
     card.innerHTML = kind === 'pilot' ? pilotCard(key) : kind === 'atc' ? atcCard(key) : airportCard(key);
+    cardKey = id;
     card.hidden = false;
-    card.scrollTop = scroll;
+    card.scrollTop = opening || swapping ? 0 : scroll;
+    growProgress(shownPct);
+    if (opening) showCard(); else if (swapping) swapCard();
   }
 
   function pilotCard(cs) {
@@ -827,7 +971,8 @@
     if (selected?.kind === 'pilot') {
       loadRoute(selected.key);
       const p = pilotOf(selected.key);
-      if (follow && p?.latitude != null) map.panTo([p.latitude, p.longitude]);
+      // With motion the map moves with the gliding aircraft (see step); without it, it jumps with the aircraft.
+      if (follow && p?.latitude != null && calm.matches) map.panTo([p.latitude, p.longitude]);
     }
     if (pendingHash) {
       const q = pendingHash;
