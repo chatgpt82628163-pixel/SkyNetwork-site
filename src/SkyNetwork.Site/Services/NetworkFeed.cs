@@ -10,19 +10,36 @@ namespace SkyNetwork.Site.Services;
 /// </summary>
 public sealed class NetworkFeed(IOptions<SiteOptions> options, Database db, IHttpClientFactory http, ILogger<NetworkFeed> log) : BackgroundService
 {
-    private readonly Dictionary<string, long> _open = [];
+    /// <summary>
+    /// Back online within this time with the same callsign (a simulator crash, a lost connection): the session and
+    /// the track on the map go on instead of starting a second flight.
+    /// </summary>
+    public static readonly TimeSpan ReconnectGrace = TimeSpan.FromMinutes(20);
+    /// <summary>A reconnect further than this from where the aircraft was is a new flight for the track.</summary>
+    private const double ReconnectNm = 5;
+
+    // Open sessions by key, with the details stored so far (the flight plan often comes a little after the connection).
+    private readonly Dictionary<string, (long Id, string Details)> _open = [];
     private volatile OnlineSnapshot _current = OnlineSnapshot.Empty;
     private bool _adopted;
     // Where each online aircraft has been since it connected (in memory only), for the flown track on the map.
     // A fix every 5 s for a long flight is ~7000 points; the oldest go once this is exceeded.
     private const int MaxTrackPoints = 20000;
-    private readonly Dictionary<string, (long Cid, List<TrackPoint> Points)> _tracks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, FlownTrack> _tracks = new(StringComparer.OrdinalIgnoreCase);
+
+    private sealed class FlownTrack(long cid)
+    {
+        public long Cid { get; } = cid;
+        public List<TrackPoint> Points { get; } = [];
+        /// <summary>When the aircraft went offline; the track is kept for <see cref="ReconnectGrace"/>.</summary>
+        public long? Gone { get; set; }
+    }
 
     public OnlineSnapshot Current => _current;
 
     public IReadOnlyList<TrackPoint> Track(string callsign)
     {
-        lock (_tracks) return _tracks.TryGetValue(callsign, out var t) ? t.Points.ToArray() : [];
+        lock (_tracks) return _tracks.TryGetValue(callsign, out var t) && t.Gone == null ? t.Points.ToArray() : [];
     }
 
     protected override async Task ExecuteAsync(CancellationToken stop)
@@ -67,8 +84,11 @@ public sealed class NetworkFeed(IOptions<SiteOptions> options, Database db, IHtt
             {
                 if (p.Latitude is not { } lat || p.Longitude is not { } lon) continue;
                 online.Add(p.Callsign);
-                // A callsign taken by someone else starts a new track.
-                if (!_tracks.TryGetValue(p.Callsign, out var t) || t.Cid != p.Cid) _tracks[p.Callsign] = t = (p.Cid, []);
+                // A callsign taken by someone else starts a new track, and so does a reconnect somewhere else.
+                if (!_tracks.TryGetValue(p.Callsign, out var t) || t.Cid != p.Cid
+                    || t.Gone != null && t.Points.Count > 0 && FeedParser.Distance(t.Points[^1].Latitude, t.Points[^1].Longitude, lat, lon) > ReconnectNm)
+                    _tracks[p.Callsign] = t = new FlownTrack(p.Cid);
+                t.Gone = null;
                 if (t.Points.Count > 0)
                 {
                     var last = t.Points[^1];
@@ -81,7 +101,11 @@ public sealed class NetworkFeed(IOptions<SiteOptions> options, Database db, IHtt
                 t.Points.Add(new TrackPoint(lat, lon, p.Altitude, p.Groundspeed, now));
                 if (t.Points.Count > MaxTrackPoints) t.Points.RemoveRange(0, t.Points.Count - MaxTrackPoints);
             }
-            foreach (var gone in _tracks.Keys.Where(k => !online.Contains(k)).ToList()) _tracks.Remove(gone);
+            foreach (var (callsign, t) in _tracks.Where(kv => !online.Contains(kv.Key)).ToList())
+            {
+                t.Gone ??= now;
+                if (now - t.Gone >= ReconnectGrace.TotalSeconds) _tracks.Remove(callsign);
+            }
         }
     }
 
@@ -104,7 +128,7 @@ public sealed class NetworkFeed(IOptions<SiteOptions> options, Database db, IHtt
             foreach (var open in c.Query<NetworkSession>("SELECT * FROM network_sessions WHERE ended_at IS NULL"))
             {
                 var key = Key(open.Kind, open.Cid, open.Callsign);
-                if (online.ContainsKey(key) && !_open.ContainsKey(key)) _open[key] = open.Id;
+                if (online.ContainsKey(key) && !_open.ContainsKey(key)) _open[key] = (open.Id, open.Details);
                 else c.Execute("UPDATE network_sessions SET ended_at = @now WHERE id = @id", new { id = open.Id, now });
             }
             _adopted = true;
@@ -112,15 +136,38 @@ public sealed class NetworkFeed(IOptions<SiteOptions> options, Database db, IHtt
 
         foreach (var (key, x) in online)
         {
-            if (_open.ContainsKey(key)) continue;
+            if (_open.TryGetValue(key, out var open))
+            {
+                if (open.Details.Length == 0 && x.Details.Length > 0)
+                {
+                    c.Execute("UPDATE network_sessions SET details = @Details WHERE id = @id", new { x.Details, id = open.Id });
+                    _open[key] = (open.Id, x.Details);
+                }
+                continue;
+            }
+            // The same callsign back soon after it left, with the same flight plan or none yet: the flight goes on.
+            var resumed = c.QueryFirstOrDefault<NetworkSession>("""
+                SELECT * FROM network_sessions
+                WHERE cid = @Cid AND kind = @Kind AND callsign = @Callsign COLLATE NOCASE AND ended_at >= @since
+                  AND (details = @Details OR details = '' OR @Details = '')
+                ORDER BY ended_at DESC LIMIT 1
+                """, new { x.Cid, x.Kind, x.Callsign, x.Details, since = now - (long)ReconnectGrace.TotalSeconds });
+            if (resumed is { } r)
+            {
+                string details = r.Details.Length > 0 ? r.Details : x.Details;
+                c.Execute("UPDATE network_sessions SET ended_at = NULL, details = @details WHERE id = @Id", new { r.Id, details });
+                _open[key] = (r.Id, details);
+                continue;
+            }
             long started = Math.Min(now, new DateTimeOffset(x.Logon).ToUnixTimeSeconds());
-            _open[key] = c.ExecuteScalar<long>("""
+            long id = c.ExecuteScalar<long>("""
                 INSERT INTO network_sessions (cid, callsign, kind, details, started_at) VALUES (@Cid, @Callsign, @Kind, @Details, @started) RETURNING id
                 """, new { x.Cid, x.Callsign, x.Kind, x.Details, started = started > 0 ? started : now });
+            _open[key] = (id, x.Details);
         }
-        foreach (var (key, id) in _open.Where(kv => !online.ContainsKey(kv.Key)).ToList())
+        foreach (var (key, open) in _open.Where(kv => !online.ContainsKey(kv.Key)).ToList())
         {
-            c.Execute("UPDATE network_sessions SET ended_at = @now WHERE id = @id", new { id, now });
+            c.Execute("UPDATE network_sessions SET ended_at = @now WHERE id = @id", new { id = open.Id, now });
             _open.Remove(key);
         }
     }
