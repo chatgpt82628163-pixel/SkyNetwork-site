@@ -10,19 +10,35 @@
     <p>@(s.Available ? L.F("Server data as of {0}. The list updates every 5 seconds.", Format.Time(s.Updated)) : L["The server is not responding — showing the last known data."])</p>
   </div>
 
-  <div class="section-head"><h2>@L["Controllers"] · @s.Controllers.Count</h2></div>
-  @if (s.Controllers.Count == 0)
+  <div class="section-head"><h2>@L["Controllers"] · @s.OnPosition.Count</h2></div>
+  @if (s.OnPosition.Count == 0)
   {
     <div class="empty">@L["No one is on position."]</div>
   }
   else
   {
     <div class="strips two">
-      @foreach (var c in s.Controllers)
+      @foreach (var c in s.OnPosition)
       {
         <div class="strip @c.FacilityName">
           <a class="cs" href="/members/@c.Cid">@c.Callsign</a>
           <span class="who">@c.Name · @c.Rating · @L["since"] @Format.Time(c.LogonTime)</span>
+          <span class="freq">@c.Frequency@(c.AtisCode.Length > 0 ? " · " + c.AtisCode : "")</span>
+          @if (c.Text.Count > 0) { <div class="atis-text" style="grid-column:1/-1">@string.Join("\n", c.Text)</div> }
+        </div>
+      }
+    </div>
+  }
+
+  @if (s.Atis.Count > 0)
+  {
+    <div class="section-head" style="margin-top:40px"><h2>ATIS · @s.Atis.Count</h2></div>
+    <div class="strips two">
+      @foreach (var c in s.Atis)
+      {
+        <div class="strip ATIS">
+          <a class="cs" href="/members/@c.Cid">@c.Callsign</a>
+          <span class="who">@c.Name · @L["since"] @Format.Time(c.LogonTime)</span>
           <span class="freq">@c.Frequency@(c.AtisCode.Length > 0 ? " · " + c.AtisCode : "")</span>
           @if (c.Text.Count > 0) { <div class="atis-text" style="grid-column:1/-1">@string.Join("\n", c.Text)</div> }
         </div>
