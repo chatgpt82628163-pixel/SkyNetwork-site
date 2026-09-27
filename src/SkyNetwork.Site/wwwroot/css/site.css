@@ -240,7 +240,7 @@ html.at-top .site-header::after { opacity: 0; }
   :root:not([data-theme="light"]) .brand .mark-light { display: none; }
   :root:not([data-theme="light"]) .brand .mark-dark { display: block; }
 }
-.brand .brand-net { margin-left: .3em; background: var(--grad-word); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand .brand-net { margin-left: 0; background: var(--grad-word); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .nav { display: flex; justify-content: center; gap: 2px; flex: 1; white-space: nowrap; }
 .nav a, .user-nav a { color: var(--slate); font: 500 14px/1.2 var(--body); padding: 8px 12px; border-radius: 999px; transition: color var(--t-hover) var(--ease), background-color var(--t-hover) var(--ease); }
 .nav a:hover, .user-nav a:hover { color: var(--ink); text-decoration: none; }
