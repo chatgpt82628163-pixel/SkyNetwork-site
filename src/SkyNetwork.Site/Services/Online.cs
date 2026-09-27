@@ -15,6 +15,9 @@ public sealed partial record ControllerOnline(long Cid, string Name, string Call
     /// <summary>An ATIS logs in as an observer; its callsign (UUEE_ATIS) tells it apart.</summary>
     public bool IsAtis => Callsign.EndsWith("_ATIS", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>A controller on a position: an ATIS or an observer is connected but controls no one.</summary>
+    public bool OnPosition => FacilityName is not ("OBS" or "ATIS");
+
     public string FacilityName => IsAtis ? "ATIS" : Facility switch
     {
         1 => "FSS", 2 => "DEL", 3 => "GND", 4 => "TWR", 5 => "APP", 6 => "CTR", _ => "OBS",
@@ -49,6 +52,11 @@ public sealed record OnlineSnapshot(DateTime Updated, string Server, bool Availa
     IReadOnlyList<ControllerOnline> Controllers)
 {
     public static readonly OnlineSnapshot Empty = new(DateTime.MinValue, "", false, [], []);
+
+    /// <summary>The controllers the counts show: without ATIS stations and observers.</summary>
+    public IReadOnlyList<ControllerOnline> OnPosition => Controllers.Where(c => c.OnPosition).ToList();
+
+    public IReadOnlyList<ControllerOnline> Atis => Controllers.Where(c => c.IsAtis).ToList();
 }
 
 /// <summary>Parses the FSD server's /data.json.</summary>

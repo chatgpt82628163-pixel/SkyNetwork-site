@@ -130,7 +130,9 @@ public static class ApiEndpoints
             {
                 members = members.Count(),
                 pilotsOnline = feed.Current.Pilots.Count,
-                controllersOnline = feed.Current.Controllers.Count,
+                // ATIS stations and observers are connected but are not controllers on a position.
+                controllersOnline = feed.Current.OnPosition.Count,
+                atisOnline = feed.Current.Atis.Count,
                 sessionsToday = today,
                 sessionsLast30Days = month,
             };
