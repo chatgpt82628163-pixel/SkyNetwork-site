@@ -99,9 +99,11 @@ public static class HostProbe
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(timeout);
             try { await p.WaitForExitAsync(cts.Token); }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            catch (OperationCanceledException)
             {
+                // Too slow, or the site is stopping: the program must not stay behind either way.
                 try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+                if (ct.IsCancellationRequested) throw;
                 return null;
             }
             return (p.ExitCode, (await stdout) + (await stderr));

@@ -33,7 +33,8 @@ public sealed class HealthMonitor(
     private readonly Dictionary<string, Dictionary<long, HealthLevel>> _history = [];
     private readonly Dictionary<string, (HealthCheck Result, DateTime At)> _slow = [];
     private volatile IReadOnlyList<HealthCheck> _results = [];
-    private IReadOnlyList<LogEntry> _journal = [];
+    // Written by the checks, read by the page on another thread.
+    private volatile IReadOnlyList<LogEntry> _journal = [];
     private DateTime _lastRun;
 
     public IReadOnlyList<HealthCheck> Results => _results;
