@@ -33,6 +33,7 @@
   const planeLayer = L.layerGroup().addTo(map);   // aircraft: kept between refreshes, so they glide instead of jumping
   const routeLayer = L.layerGroup().addTo(map);   // the selected flight
   const calm = matchMedia('(prefers-reduced-motion: reduce)');
+  const coarse = matchMedia('(pointer: coarse)');   // touch device: no hover popover
 
   const card = document.getElementById('map-card');
   const search = document.getElementById('map-search');
@@ -393,6 +394,137 @@
   loadAirports().then(() => { if (!compact) drawCodes(); render(); });
   layerToggle('layer-codes', 'codes', on => { if (on) { codesLayer.addTo(map); drawCodes(); } else codesLayer.remove(); });
 
+  // ---- hover popover ----
+  // A small card anchored to airport badges, sector labels, and approach circles.
+  // Only shown on pointer devices; touch users tap to open the full card as before.
+  const popEl = (() => {
+    const d = document.createElement('div');
+    d.className = 'map-pop';
+    d.hidden = true;
+    (el.closest('.map-page') ?? el.parentElement).appendChild(d);
+    return d;
+  })();
+
+  let hov = null;        // { kind: 'apt'|'atc'|'app', key, at:[lat,lon] } or null
+  let hovTimer = 0;
+
+  function showPop(kind, key, at) {
+    clearTimeout(hovTimer);
+    const content = buildPop(kind, key);
+    if (!content) return;
+    const same = hov && hov.kind === kind && hov.key === key;
+    hov = { kind, key, at };
+    popEl.innerHTML = content;
+    placePop();
+    if (!same) {
+      // Re-trigger the grow-in animation for a new element.
+      popEl.hidden = true;
+      void popEl.offsetHeight;  // flush
+    }
+    popEl.hidden = false;
+  }
+
+  function hidePop() {
+    hovTimer = setTimeout(() => {
+      hov = null;
+      popEl.hidden = true;
+    }, 100);
+  }
+
+  function keepPop() { clearTimeout(hovTimer); }
+
+  function placePop() {
+    if (!hov) return;
+    const pt = map.latLngToContainerPoint(hov.at);
+    const above = pt.y > 160;
+    popEl.style.left = Math.round(pt.x) + 'px';
+    popEl.style.top = Math.round(above ? pt.y - 6 : pt.y + 6) + 'px';
+    popEl.style.transform = above ? 'translate(-50%,-100%)' : 'translate(-50%,0)';
+  }
+
+  function updatePop() {
+    if (!hov || popEl.hidden) return;
+    const content = buildPop(hov.kind, hov.key);
+    if (!content) { hov = null; popEl.hidden = true; return; }
+    popEl.innerHTML = content;
+    placePop();
+  }
+
+  popEl.addEventListener('mouseenter', keepPop);
+  popEl.addEventListener('mouseleave', hidePop);
+  map.on('move', placePop);
+
+  function buildPop(kind, key) {
+    if (!data) return '';
+    if (kind === 'apt') return popAirport(key);
+    if (kind === 'atc') return popAtc(key);
+    if (kind === 'app') return popApp(key);
+    return '';
+  }
+
+  const popChip = c => {
+    const f = c.facility;
+    if (f === 'ATIS') return `<i class="ATIS">${esc(c.atisCode || 'i')}</i>`;
+    if (f === 'FSS')  return `<i class="FSS">F</i>`;
+    return `<i class="${f}">${f[0]}</i>`;
+  };
+
+  function popRow(c) {
+    const atisLine = c.facility === 'ATIS' && c.textAtis?.length
+      ? `<div class="pop-atis">${esc(c.textAtis[0].slice(0, 72))}</div>` : '';
+    return `<div class="pop-row">` +
+      `<div class="pop-head">${popChip(c)}<span class="pop-cs">${esc(c.callsign)}</span><span class="pop-freq">${esc(c.frequency)}</span></div>` +
+      `<div class="pop-who">${esc(c.name)} · ${esc(c.rating)} · ${onlineFor(c.logonTime)}</div>` +
+      atisLine + `</div>`;
+  }
+
+  function popAirport(code) {
+    const order = ['DEL', 'GND', 'TWR', 'APP', 'ATIS'];
+    const list = order.flatMap(f => data.controllers.filter(c => prefix(c.callsign) === code && c.facility === f));
+    if (!list.length) return '';
+    const deps = data.pilots.filter(p => p.flightPlan?.departure?.toUpperCase() === code).length;
+    const arrs = data.pilots.filter(p => p.flightPlan?.destination?.toUpperCase() === code).length;
+    const foot = deps + arrs > 0
+      ? `<div class="pop-foot"><span>${t('Departures')} ${deps}</span><span>${t('Arrivals')} ${arrs}</span></div>` : '';
+    return list.map(popRow).join('') + foot;
+  }
+
+  function popAtc(cs) {
+    const c = atcOf(cs);
+    if (!c) return '';
+    const sector = (c.facility === 'CTR' || c.facility === 'FSS') ? sectorOf(c) : null;
+    let ctrls;
+    if (sector) {
+      ctrls = data.controllers.filter(x => {
+        if (x.facility !== 'CTR' && x.facility !== 'FSS') return false;
+        const s = sectorOf(x);
+        return s && s.id === sector.id;
+      });
+      if (!ctrls.length) ctrls = [c];
+    } else {
+      ctrls = [c];
+    }
+    return ctrls.map(popRow).join('');
+  }
+
+  function popApp(code) {
+    const list = data.controllers.filter(c => prefix(c.callsign) === code && (c.facility === 'APP' || c.facility === 'ATIS'));
+    return list.map(popRow).join('');
+  }
+
+  // Keyboard: focusin on a badge or label shows the popover (tabbed into it).
+  map.getContainer().addEventListener('focusin', e => {
+    if (coarse.matches) return;
+    const node = e.target.closest('[data-popkind]');
+    if (!node) return;
+    const at = [parseFloat(node.dataset.lat), parseFloat(node.dataset.lon)];
+    if (isNaN(at[0]) || isNaN(at[1])) return;
+    showPop(node.dataset.popkind, node.dataset.popkey, at);
+  });
+  map.getContainer().addEventListener('focusout', e => {
+    if (e.target.closest('[data-popkind]')) hidePop();
+  });
+
   // Everyone on the map at once.
   let lastPoints = [];
   document.getElementById('fit-all')?.addEventListener('click', () => {
@@ -423,10 +555,20 @@
         } else if (at) {
           // No known border for this callsign: a circle instead, smaller for a part of a sector.
           const part = String(c.callsign).split('_').filter(p => !/^\d+$/.test(p)).length > 2;
-          L.circle(at, { radius: (c.facility === 'FSS' ? 250 : part ? 90 : 180) * 1852, color: ctr, weight: 1.2, fillOpacity: .06, bubblingMouseEvents: false })
-            .on('click', open('atc', c.callsign)).addTo(sectors);
-          label(`<span class="atc-label" title="${esc(c.name)} · ${esc(c.frequency)}" style="transform:translate(-50%,-50%);display:inline-block">${esc(c.callsign)}</span>`, open('atc', c.callsign))
-            .setLatLng(at).addTo(traffic);
+          const ctrAt = at;
+          L.circle(ctrAt, { radius: (c.facility === 'FSS' ? 250 : part ? 90 : 180) * 1852, color: ctr, weight: 1.2, fillOpacity: .06, bubblingMouseEvents: false })
+            .on('click', open('atc', c.callsign))
+            .on('mouseover', () => !coarse.matches && showPop('atc', c.callsign, ctrAt))
+            .on('mouseout', () => hidePop())
+            .addTo(sectors);
+          label(
+            `<span class="atc-label" title="${esc(c.name)} · ${esc(c.frequency)}" ` +
+            `data-popkind="atc" data-popkey="${esc(c.callsign)}" data-lat="${ctrAt[0]}" data-lon="${ctrAt[1]}" ` +
+            `style="transform:translate(-50%,-50%);display:inline-block">${esc(c.callsign)}</span>`,
+            open('atc', c.callsign))
+            .on('mouseover', () => !coarse.matches && showPop('atc', c.callsign, ctrAt))
+            .on('mouseout', () => hidePop())
+            .setLatLng(ctrAt).addTo(traffic);
         }
         continue;
       }
@@ -434,9 +576,14 @@
       towers.set(code, [...(towers.get(code) ?? []), c]);
       // Around the airport: a controller's own position is often the middle of their whole sector file.
       const airportAt = aptLL(code) ?? at;
-      if (c.facility === 'APP' && airportAt)
-        L.circle(airportAt, { radius: 45 * 1852, color: app, weight: 1, dashArray: '4 4', fillOpacity: .05, bubblingMouseEvents: false })
-          .on('click', open('airport', code)).addTo(sectors);
+      if (c.facility === 'APP' && airportAt) {
+        const appAt = airportAt;
+        L.circle(appAt, { radius: 45 * 1852, color: app, weight: 1, dashArray: '4 4', fillOpacity: .05, bubblingMouseEvents: false })
+          .on('click', open('airport', code))
+          .on('mouseover', () => !coarse.matches && showPop('app', code, appAt))
+          .on('mouseout', () => hidePop())
+          .addTo(sectors);
+      }
     }
 
     for (const [, s] of staffed) {
@@ -445,8 +592,18 @@
         .on('click', open('atc', cs)).addTo(sectors);
       const names = s.controllers.map(c => esc(c.callsign)).join('<br>');
       const hint = esc(s.name) + ' · ' + s.controllers.map(c => esc(c.frequency)).join(', ');
-      label(`<span class="atc-label" title="${hint}" style="transform:translate(-50%,-50%);display:inline-block;text-align:center">${names}</span>`, open('atc', cs))
-        .setLatLng(s.label ?? shape.getBounds().getCenter()).addTo(traffic);
+      const rawCenter = s.label ?? shape.getBounds().getCenter();
+      const sectAt = Array.isArray(rawCenter) ? rawCenter : [rawCenter.lat, rawCenter.lng];
+      shape.on('mouseover', () => !coarse.matches && showPop('atc', cs, sectAt))
+           .on('mouseout', () => hidePop());
+      label(
+        `<span class="atc-label" title="${hint}" ` +
+        `data-popkind="atc" data-popkey="${esc(cs)}" data-lat="${sectAt[0]}" data-lon="${sectAt[1]}" ` +
+        `style="transform:translate(-50%,-50%);display:inline-block;text-align:center">${names}</span>`,
+        open('atc', cs))
+        .on('mouseover', () => !coarse.matches && showPop('atc', cs, sectAt))
+        .on('mouseout', () => hidePop())
+        .setLatLng(sectAt).addTo(traffic);
     }
 
     const order = ['DEL', 'GND', 'TWR', 'APP', 'ATIS'];
@@ -461,8 +618,15 @@
       const chips = order.filter(f => list.some(x => x.facility === f)).map(f => f === 'ATIS'
         ? `<i class="ATIS">${esc(list.find(x => x.facility === 'ATIS').atisCode || 'i')}</i>` : `<i class="${f}">${f[0]}</i>`).join('');
       const hint = list.map(x => `${esc(x.callsign)} ${esc(x.frequency)}`).join('&#10;');
-      label(`<span class="apt-badge" title="${hint}" style="transform:translate(-50%,-50%)">${esc(code)}${chips}</span>`, open('airport', code))
-        .setLatLng(at).addTo(traffic);
+      const aptAt = at;
+      label(
+        `<span class="apt-badge" title="${hint}" ` +
+        `data-popkind="apt" data-popkey="${esc(code)}" data-lat="${aptAt[0]}" data-lon="${aptAt[1]}" ` +
+        `style="transform:translate(-50%,-50%)">${esc(code)}${chips}</span>`,
+        open('airport', code))
+        .on('mouseover', () => !coarse.matches && showPop('apt', code, aptAt))
+        .on('mouseout', () => hidePop())
+        .setLatLng(aptAt).addTo(traffic);
     }
 
     // Aircraft stay on the map between refreshes: a new one fades in, a known one glides to its new position and
@@ -510,6 +674,7 @@
       } else planeLayer.removeLayer(e.marker);
     }
     updateCard();
+    updatePop();
     return points;
   }
 

@@ -687,6 +687,49 @@ details.mc-sec .mc-block + .mc-block { margin-top: 12px; }
 .apt-badge .ATIS { background: var(--f-atis); }
 .atis-text { font: 12px/1.5 var(--mono); white-space: pre-wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 6px 0 0; }
 .apt-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--paper); border: 2px solid var(--map-route); }
+
+/* ---- map hover popover ---- */
+/* Anchored to badges and sector labels; grows from the anchor with a short spring. */
+.map-pop {
+  position: absolute;
+  z-index: 1000;
+  pointer-events: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px -8px var(--shadow-strong), 0 2px 6px -2px var(--shadow);
+  min-width: 210px;
+  max-width: 300px;
+  overflow: hidden;
+}
+.map-pop[hidden] { display: none; }
+@keyframes map-pop-in {
+  from { opacity: 0; scale: .93; }
+  to   { opacity: 1; scale: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .map-pop:not([hidden]) { animation: map-pop-in 160ms cubic-bezier(.22, 1, .36, 1) both; }
+}
+.pop-row { padding: 6px 10px; }
+.pop-row + .pop-row { border-top: 1px solid var(--line); }
+.pop-head { display: flex; align-items: center; gap: 5px; }
+/* Facility chips inside the popover, same palette as the badge chips. */
+.pop-head i { font-style: normal; font: 700 10px/16px var(--mono); color: #fff; border-radius: 3px; padding: 0 4px; flex-shrink: 0; }
+.pop-head .DEL { background: var(--f-del); }
+.pop-head .GND { background: var(--f-gnd); }
+.pop-head .TWR { background: var(--f-twr); }
+.pop-head .APP { background: var(--f-app); }
+.pop-head .CTR, .pop-head .FSS { background: var(--f-ctr); }
+.pop-head .ATIS { background: var(--f-atis); }
+.pop-cs { font: 700 12px var(--mono); letter-spacing: .02em; color: var(--ink); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pop-freq { font: 600 11px var(--mono); color: var(--accent-ink); white-space: nowrap; flex-shrink: 0; }
+.pop-who { font-size: 11px; color: var(--slate); margin-top: 2px; padding-left: 27px; line-height: 1.35; }
+/* First line of the ATIS text, clipped to one line. */
+.pop-atis { font: 10.5px/1.4 var(--mono); color: var(--slate); margin-top: 1px; padding-left: 27px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+/* Departure and arrival counts below the controller rows. */
+.pop-foot { display: flex; gap: 16px; padding: 4px 10px 5px; font-size: 11px; color: var(--slate);
+  border-top: 1px solid var(--line); background: var(--surface); }
 .fir-label { background: none; border: 0; box-shadow: none; font: 700 11px var(--mono); color: var(--f-ctr); text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper); }
 .fir-label::before { display: none; }
 /* Airport codes as on radar screens: plain bold text, the bigger airports a little brighter. */
