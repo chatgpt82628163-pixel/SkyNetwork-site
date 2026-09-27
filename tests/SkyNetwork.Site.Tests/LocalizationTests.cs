@@ -26,6 +26,8 @@ public class LocalizationTests
         new(@"\b(?:Error|Message)\s*=\s*\w+\s*\?\s*""((?:[^""\\]|\\.)+)""\s*:\s*""(?:[^""\\]|\\.)+"""),
         new(@"\b(?:Error|Message)\s*=\s*\w+\s*\?\s*""(?:[^""\\]|\\.)+""\s*:\s*""((?:[^""\\]|\\.)+)"""),
         new(@"return ""([A-Z{][^""]* [^""]*)"";"),
+        // Texts of the status page, translated when the page shows them.
+        new(@"new Say\(""((?:[^""\\]|\\.)+)"""),
     ];
 
     private static IEnumerable<string> UsedKeys()

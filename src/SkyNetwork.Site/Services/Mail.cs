@@ -74,6 +74,13 @@ public sealed class Mailer(IOptions<MailOptions> options, IMailSender sender, IL
     public bool Enabled => options.Value.Enabled;
     public string SiteUrl => options.Value.SiteUrl.TrimEnd('/');
 
+    /// <summary>When a letter last went out (for the status page).</summary>
+    public DateTime? LastSent { get; private set; }
+    /// <summary>The last letter that could not be sent after all tries, and why (for the status page).</summary>
+    public (DateTime At, string Error)? LastFailure { get; private set; }
+    /// <summary>Letters waiting to go out.</summary>
+    public int Waiting => _queue.Reader.Count;
+
     /// <summary>Queues a letter; nothing happens when mail is not set up or there is no address.</summary>
     public void Send(string? to, string subject, string body)
     {
@@ -90,6 +97,7 @@ public sealed class Mailer(IOptions<MailOptions> options, IMailSender sender, IL
                 try
                 {
                     await sender.SendAsync(letter, stop);
+                    LastSent = DateTime.UtcNow;
                     log.LogInformation("Mail \"{Subject}\" sent to {To}", letter.Subject, letter.To);
                     break;
                 }
@@ -97,6 +105,7 @@ public sealed class Mailer(IOptions<MailOptions> options, IMailSender sender, IL
                 {
                     if (attempt >= 3)
                     {
+                        LastFailure = (DateTime.UtcNow, ex.Message);
                         log.LogWarning(ex, "Mail \"{Subject}\" to {To} not sent", letter.Subject, letter.To);
                         break;
                     }

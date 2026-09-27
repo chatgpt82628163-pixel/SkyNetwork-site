@@ -29,6 +29,8 @@ public enum Perm
     ManageDivisions = 1 << 16,
     /// <summary>Approve or decline the rating requests divisions send after an exam.</summary>
     ApproveRatings = 1 << 17,
+    /// <summary>The status page: how the servers and services of the network are doing.</summary>
+    SystemStatus = 1 << 18,
     All = ~0,
 }
 
@@ -50,7 +52,7 @@ public static class Permissions
 
     private const Perm Supervisor = Perm.StaffArea | Perm.ViewMembers | Perm.Suspend | Perm.Notes | Perm.Tickets | Perm.Online |
                                     Perm.Bookings | Perm.Audit | Perm.Events | Perm.News | Perm.PilotRatings |
-                                    Perm.EditNames | Perm.ApproveRatings;
+                                    Perm.EditNames | Perm.ApproveRatings | Perm.SystemStatus;
 
     private const Perm Instructor = Perm.StaffArea | Perm.ViewMembers | Perm.Notes | Perm.EditRatings | Perm.Online |
                                     Perm.PilotRatings;

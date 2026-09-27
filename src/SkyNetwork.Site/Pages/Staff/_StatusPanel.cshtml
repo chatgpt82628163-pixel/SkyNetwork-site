@@ -1,0 +1,122 @@
+@using SkyNetwork.Site.Services.Health
+@model HealthMonitor
+@{
+    // Values of the checks: durations and times in the visitor's language, the rest as they are.
+    string Span(TimeSpan t) => t.TotalDays >= 1 ? L.F("{0} d {1} h", (int)t.TotalDays, t.Hours) : Format.Duration(t);
+    object? Arg(object? a) => a switch { TimeSpan t => Span(t), DateTime d => Format.Utc(d), _ => a };
+    string Text(Say s) => L.F(s.Key, s.Args.Select(Arg).ToArray());
+    string Cls(HealthLevel l) => l switch { HealthLevel.Ok => "ok", HealthLevel.Warning => "warn", HealthLevel.Error => "danger", _ => "unknown" };
+    string Word(HealthLevel l) => l switch
+    {
+        HealthLevel.Ok => L["Working"],
+        HealthLevel.Warning => L["Warning"],
+        HealthLevel.Error => L["Not working"],
+        _ => L["Not visible from the website"],
+    };
+    string SourceName(string source) => source switch
+    {
+        "site" => L["Website"],
+        "skynet-fsd" => L["Network server"],
+        "skynet-voice" => L["Voice server"],
+        "skynetwork-bot" => L["Discord bot"],
+        "caddy" => L["Web server"],
+        _ => source,
+    };
+    var results = Model.Results;
+    var overall = Model.Overall;
+    int errors = results.Count(r => r.Level == HealthLevel.Error), warnings = results.Count(r => r.Level == HealthLevel.Warning);
+    var problems = Model.Problems();
+}
+<section class="status-summary @Cls(overall)" aria-live="polite">
+  <span class="status-orb" aria-hidden="true"></span>
+  <div>
+    <h2>@(overall switch { HealthLevel.Ok => L["Everything is working"], HealthLevel.Warning => L["Working, with warnings"], _ => L["Something is not working"] })</h2>
+    <p class="muted">
+      @if (errors > 0) { <span>@L.F("Not working: {0}", errors)</span><span aria-hidden="true"> · </span> }
+      @if (warnings > 0) { <span>@L.F("Warnings: {0}", warnings)</span><span aria-hidden="true"> · </span> }
+      @if (Model.LastRun != default) { <span>@L.F("Checked {0}", Format.Utc(Model.LastRun))</span> }
+    </p>
+  </div>
+</section>
+
+@foreach (var (group, title) in HealthMonitor.Groups)
+{
+    var rows = results.Where(r => r.Group == group).ToList();
+    if (rows.Count == 0) { continue; }
+    <section class="status-group">
+      <h2>@L[title]</h2>
+      <div class="status-list">
+        @foreach (var r in rows)
+        {
+          <article class="status-row @Cls(r.Level)">
+            <div class="status-head">
+              <span class="status-dot" role="img" aria-label="@Word(r.Level)" title="@Word(r.Level)"></span>
+              <h3>@Text(r.Title)</h3>
+              <span class="status-value">@Text(r.Value)</span>
+            </div>
+            <div class="status-timeline" role="img" aria-label="@L["The last 24 hours, half an hour per bar"]">
+              @foreach (var level in Model.Timeline(r.Id))
+              {
+                <i class="@(level is { } l ? Cls(l) : "none")"></i>
+              }
+            </div>
+            @if (r.Problem != null)
+            {
+              <div class="status-problem">
+                <p>@Text(r.Problem)</p>
+                @if (r.Fix != null) { <p class="status-fix">@Text(r.Fix)</p> }
+                @if (r.Command != null)
+                {
+                  <div class="status-command">
+                    <code>@r.Command</code>
+                    <button type="button" class="btn btn-small" data-copy="@r.Command" data-copied="@L["Copied"]">@L["Copy"]</button>
+                  </div>
+                }
+              </div>
+            }
+          </article>
+        }
+      </div>
+      @if (group == HealthMonitor.Network) { <p class="status-legend muted small"><span>@L["24 hours ago"]</span><span>@L["now"]</span></p> }
+    </section>
+}
+
+<section class="status-group" data-problems>
+  <div class="status-group-head">
+    <h2>@L["Problems in the last 24 hours"]</h2>
+    @if (problems.Count > 0)
+    {
+      <div class="segmented" role="radiogroup" aria-label="@L["Show"]">
+        <label><input type="radio" name="problems" value="all" checked><span>@L["All"]</span></label>
+        <label><input type="radio" name="problems" value="error"><span>@L["Errors"]</span></label>
+        <label><input type="radio" name="problems" value="site"><span>@L["Website"]</span></label>
+        <label><input type="radio" name="problems" value="services"><span>@L["Services"]</span></label>
+      </div>
+    }
+  </div>
+  @if (problems.Count == 0)
+  {
+    <p class="status-empty muted">@L["No warnings or errors in the last 24 hours."]</p>
+  }
+  else
+  {
+    <div class="status-list">
+      @foreach (var p in problems)
+      {
+        <div class="problem-row" data-kind="@(p.IsError ? "error" : "warning") @(p.Source == "site" ? "site" : "services")">
+          <div class="problem-head">
+            <span class="badge @(p.IsError ? "danger" : "warn")">@(p.IsError ? L["error"] : L["warning"])</span>
+            <span class="badge">@SourceName(p.Source)</span>
+            @if (p.Count > 1) { <span class="problem-count">×@p.Count</span> }
+            <span class="problem-time muted small">@(p.Count > 1 ? Format.Utc(p.First) + " — " : "")@Format.Utc(p.Last)</span>
+          </div>
+          <p class="problem-message">@p.Message</p>
+          @if (p.Details != null)
+          {
+            <details><summary>@L["Details"]</summary><pre>@p.Details</pre></details>
+          }
+        </div>
+      }
+    </div>
+  }
+</section>

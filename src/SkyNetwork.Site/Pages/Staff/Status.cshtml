@@ -1,0 +1,19 @@
+@page "/staff/status"
+@model SkyNetwork.Site.Pages.Staff.StatusModel
+@{ ViewData["Title"] = L["Status"]; }
+<div class="status-top">
+  <div>
+    <h1 style="font-size:30px">@L["Status"]</h1>
+    <p class="muted">@L["How the network server, the website and the server they run on are doing. Everything is checked by itself every half minute; the page updates by itself."]</p>
+  </div>
+  <form method="post" asp-page-handler="Check">
+    <button class="btn" type="submit">@L["Check now"]</button>
+  </form>
+</div>
+<div data-status-panel>
+  <partial name="_StatusPanel" model="Model.Monitor" />
+</div>
+
+@section Scripts {
+  <script src="~/js/staff-status.js" asp-append-version="true"></script>
+}

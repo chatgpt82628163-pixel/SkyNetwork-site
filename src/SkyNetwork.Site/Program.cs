@@ -14,6 +14,11 @@ using SkyNetwork.Site.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// The site's own warnings and errors of the last day, for the status page.
+var recentLog = new SkyNetwork.Site.Services.Health.RecentLog();
+builder.Services.AddSingleton(recentLog);
+builder.Logging.AddProvider(recentLog);
+
 builder.Services.Configure<SiteOptions>(builder.Configuration.GetSection("Site"));
 builder.Services.AddSingleton<Database>();
 builder.Services.Configure<MailOptions>(builder.Configuration.GetSection("Mail"));
@@ -58,6 +63,13 @@ builder.Services.AddSingleton<AirportLayout>();
 builder.Services.AddSingleton<UploadStore>();
 builder.Services.AddSingleton<SkyNetwork.Site.Security.SignupGuard>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<NetworkFeed>());
+builder.Services.AddHttpClient("health", c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(15);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/Anntixs/Skynetwork-site)");
+});
+builder.Services.AddSingleton<SkyNetwork.Site.Services.Health.HealthMonitor>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SkyNetwork.Site.Services.Health.HealthMonitor>());
 
 // Cyrillic stays as text in the HTML instead of &#x...; entities.
 builder.Services.Configure<WebEncoderOptions>(o => o.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
