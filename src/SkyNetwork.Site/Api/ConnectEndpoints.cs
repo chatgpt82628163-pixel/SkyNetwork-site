@@ -60,6 +60,8 @@ public static class ConnectEndpoints
                 staffRank = m.IsStaff ? Ratings.Short(m.StaffRank) : null,
                 pilotRating = PilotRatings.Pilot.Short(m.PilotRating), militaryRating = PilotRatings.Military.Short(m.MilitaryRating),
                 country = m.Country,
+                // Absolute address of the profile picture, or null.
+                avatar = m.AvatarUrl is { } a ? $"{ctx.Request.Scheme}://{ctx.Request.Host}{a}" : null,
             });
         }).RequireRateLimiting("connect");
     }

@@ -149,7 +149,16 @@ public static class ApiEndpoints
                 militaryRating = PilotRatings.Military.Short(m.MilitaryRating), militaryRatingName = PilotRatings.Military.Long(m.MilitaryRating),
                 registered = m.Registered,
                 pilotHours = Math.Round(h.PilotHours, 1), atcHours = Math.Round(h.AtcHours, 1), suspended = m.Suspended,
+                avatar = m.AvatarUrl,
             });
+        });
+
+        // A member's profile picture at a fixed address, for other sites (SkyRUS): a redirect to the file,
+        // 404 when there is none. Short cache: a new picture shows within minutes.
+        v1.MapGet("/members/{cid:long}/avatar", (long cid, MemberService members, HttpContext ctx) =>
+        {
+            ctx.Response.Headers.CacheControl = "public, max-age=300";
+            return members.Find(cid) is { AvatarUrl: { } url } ? Results.Redirect(url) : Results.NotFound();
         });
 
         v1.MapGet("/members/{cid:long}/sessions", (long cid, SessionService sessions) =>

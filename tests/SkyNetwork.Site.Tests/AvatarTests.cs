@@ -91,3 +91,20 @@ public class AvatarTests
         Assert.Contains("This account is suspended. It cannot connect", await site.Browser().HtmlAsync($"/members/{cid}"));
     }
 }
+
+public class AvatarApiTests
+{
+    [Fact]
+    public async Task OtherSitesFindThePictureByCid()
+    {
+        using var site = new SiteFactory();
+        long cid = site.Member("Pilot One");
+        var c = site.Browser();
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, (await c.GetAsync($"/api/v1/members/{cid}/avatar")).StatusCode);
+        site.Get<SkyNetwork.Site.Data.MemberService>().SetAvatar(cid, "0123456789abcdef0123456789abcdef.png");
+        var r = await c.GetAsync($"/api/v1/members/{cid}/avatar");
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, r.StatusCode);
+        Assert.Equal("/uploads/0123456789abcdef0123456789abcdef.png", r.Headers.Location!.OriginalString);
+        Assert.Contains("/uploads/0123456789abcdef0123456789abcdef.png", await c.HtmlAsync($"/api/v1/members/{cid}"));
+    }
+}
