@@ -21,6 +21,7 @@ public sealed class MemberModel(CurrentUser me, MemberService members, SessionSe
     public bool CanSuspend { get; private set; }
     public bool CanSetStaffRank { get; private set; }
     public bool CanEditName { get; private set; }
+    public bool CanDelete { get; private set; }
     public string? Message { get; private set; }
     public string? Error { get; private set; }
 
@@ -39,6 +40,7 @@ public sealed class MemberModel(CurrentUser me, MemberService members, SessionSe
         CanSuspend = Permissions.CanSuspend(Me.Member!, Me.Permissions, m);
         CanSetStaffRank = Permissions.CanSetStaffRank(Me.Member!, m);
         CanEditName = Permissions.CanEditName(Me.Member!, Me.Permissions, m);
+        CanDelete = Permissions.CanDelete(Me.Member!, Me.Permissions, m);
         return true;
     }
 
@@ -143,6 +145,20 @@ public sealed class MemberModel(CurrentUser me, MemberService members, SessionSe
         members.SetRoles(Me.Cid, cid, roles);
         Message = "Roles saved";
         Load(cid);
+        return Page();
+    }
+
+    /// <summary>Deletes the account for good (administrators; not staff with a rank, not oneself).</summary>
+    public IActionResult OnPostDelete(long cid, string? reason, long confirmCid)
+    {
+        if (!Load(cid) || !CanDelete) return NotFound();
+        if (string.IsNullOrWhiteSpace(reason)) Error = "Enter a reason";
+        else if (confirmCid != cid) Error = "Type the member's CID to confirm";
+        else
+        {
+            uploads.Delete(members.Delete(Me.Cid, cid, reason.Trim()));
+            return Redirect($"/staff/members?deleted={cid}");
+        }
         return Page();
     }
 

@@ -47,6 +47,12 @@ public sealed class SiteOptions
     /// </summary>
     public string DiscordBotUrl { get; set; } = "http://127.0.0.1:8090";
 
+    /// <summary>
+    /// Hours after which a registration whose email is still not confirmed (and whose last link has expired) is
+    /// deleted; 0 keeps them. Only while mail is set up: without it nobody is asked to confirm.
+    /// </summary>
+    public int UnconfirmedHours { get; set; } = 48;
+
     // ---- the status page (/staff/status) ----
 
     /// <summary>Seconds between the infrastructure checks of the status page; 0 turns the background checks off.</summary>

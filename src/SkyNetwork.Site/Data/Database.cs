@@ -195,6 +195,11 @@ public sealed class Database
         AddColumn(c, "news", "banner_en", "TEXT NOT NULL DEFAULT ''");
         // Profile picture: a file name in the uploads directory, empty for the initials.
         AddColumn(c, "member_profiles", "avatar", "TEXT NOT NULL DEFAULT ''");
+        // The highest CID ever given: a deleted member's CID is never given to anyone else.
+        c.Execute("""
+            CREATE TABLE IF NOT EXISTS site_counters (name TEXT PRIMARY KEY, value INTEGER NOT NULL);
+            INSERT OR IGNORE INTO site_counters (name, value) SELECT 'last_cid', COALESCE(MAX(cid), 0) FROM members;
+            """);
 
     }
 

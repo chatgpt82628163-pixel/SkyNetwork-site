@@ -32,6 +32,7 @@ public sealed class AuthorizeModel(CurrentUser me, ConnectService connect) : Pag
         if (Client is not { Active: true }) { Error = "This site is not registered with SkyNetwork."; return Page(); }
         if (!Client.Redirects.Contains(RedirectUri)) { Error = "The return address does not belong to this site."; return Page(); }
         if (!me.IsSignedIn) return Redirect("/login?returnUrl=" + Uri.EscapeDataString(Request.Path + Request.QueryString));
+        if (!me.Member!.EmailVerified) { Error = "Confirm your email first: open the link in the letter we sent you, then try again."; return Page(); }
         if (ResponseType != "code") return Back(("error", "unsupported_response_type"));
         if (ConnectService.ParseScope(Scope) is not { } scopes) return Back(("error", "invalid_scope"));
         if (CodeChallenge.Length > 0 && CodeChallengeMethod != "S256" || CodeChallenge.Length is > 0 and (< 43 or > 128))

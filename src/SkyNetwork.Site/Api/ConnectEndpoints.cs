@@ -48,7 +48,7 @@ public static class ConnectEndpoints
             ctx.Response.Headers.CacheControl = "no-store";
             string? auth = ctx.Request.Headers.Authorization;
             var token = auth != null && auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? auth[7..] : null;
-            if (connect.Token(token) is not { } t || members.Find(t.Cid) is not { Suspended: false } m)
+            if (connect.Token(token) is not { } t || members.Find(t.Cid) is not { Suspended: false, EmailVerified: true } m)
             {
                 ctx.Response.Headers.WWWAuthenticate = "Bearer error=\"invalid_token\"";
                 return Error(401, "invalid_token", "The access token is invalid or expired");

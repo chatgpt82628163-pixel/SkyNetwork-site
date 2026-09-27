@@ -31,6 +31,8 @@ public enum Perm
     ApproveRatings = 1 << 17,
     /// <summary>The status page: how the servers and services of the network are doing.</summary>
     SystemStatus = 1 << 18,
+    /// <summary>Delete members' accounts (administrators only).</summary>
+    DeleteAccounts = 1 << 19,
     All = ~0,
 }
 
@@ -116,4 +118,11 @@ public static class Permissions
     public static bool CanSuspend(Member actor, Perm actorPerms, Member target) =>
         actorPerms.HasFlag(Perm.Suspend) && actor.Cid != target.Cid &&
         (actor.StaffRank == Ratings.ADM || target.StaffRank == 0);
+
+    /// <summary>
+    /// Who may delete whose account: administrators, never their own (that is done in the account settings) and
+    /// never a member of the team with a rank (take the rank away first).
+    /// </summary>
+    public static bool CanDelete(Member actor, Perm actorPerms, Member target) =>
+        actorPerms.HasFlag(Perm.DeleteAccounts) && actor.Cid != target.Cid && target.StaffRank == 0;
 }

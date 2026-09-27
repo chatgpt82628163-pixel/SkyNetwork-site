@@ -39,6 +39,7 @@ builder.Services.AddSingleton<SessionService>();
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<Lang>();
 builder.Services.AddHostedService<SuspensionExpiry>();
+builder.Services.AddHostedService<UnconfirmedAccounts>();
 builder.Services.AddHttpClient("feed", c => c.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddHttpClient("discord-bot", c => c.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddSingleton<NetworkFeed>();

@@ -1,4 +1,5 @@
 using System.Net.Mail;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SkyNetwork.Site.Data;
@@ -95,5 +96,24 @@ public sealed class SettingsModel(CurrentUser me, MemberService members, Connect
         connect.Revoke(me.Cid, clientId);
         Message = "Access withdrawn";
         OnGet();
+    }
+
+    /// <summary>
+    /// The member deletes their own account after entering the password. Members of the team with a rank cannot:
+    /// an administrator takes the rank away first.
+    /// </summary>
+    public async Task<IActionResult> OnPostDeleteAsync(string? password, bool understood)
+    {
+        OnGet();
+        if (Me.StaffRank != 0) Error = "Members of the team with a rank cannot delete their account: ask an administrator to take the rank away first";
+        else if (!understood) Error = "Tick the box to confirm that you understand what is deleted";
+        else if (!members.PasswordMatches(me.Cid, password ?? "")) Error = "The password is wrong";
+        else
+        {
+            uploads.Delete(members.Delete(me.Cid, me.Cid, "deleted by the member"));
+            await HttpContext.SignOutAsync();
+            return Redirect("/account-deleted");
+        }
+        return Page();
     }
 }

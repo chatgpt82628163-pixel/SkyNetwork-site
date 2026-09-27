@@ -21,25 +21,83 @@ public sealed class MemberService(Database db, IOptions<SiteOptions> options, Au
         return c.QuerySingleOrDefault<Member>(Select + " WHERE m.cid = @cid", new { cid });
     }
 
+    /// <summary>A member others may see (public profile, API): a registration whose email is not confirmed does not count.</summary>
+    public Member? FindConfirmed(long cid) => Find(cid) is { EmailVerified: true } m ? m : null;
+
     public bool EmailTaken(string email)
     {
         using var c = db.Open();
         return c.ExecuteScalar<long>("SELECT COUNT(*) FROM member_profiles WHERE email = @email COLLATE NOCASE", new { email }) > 0;
     }
 
-    /// <summary>Creates a member with the next free CID and returns it; <paramref name="verified"/> false until the email is confirmed.</summary>
+    /// <summary>
+    /// Creates a member with the next CID never given before (a deleted member's CID is not reused) and returns it;
+    /// <paramref name="verified"/> false until the email is confirmed.
+    /// </summary>
     public long Register(string name, string email, string country, string password, bool verified = true)
     {
         var (salt, hash) = PasswordHasher.Hash(password);
         using var c = db.Open();
         using var tx = c.BeginTransaction();
-        long cid = Math.Max(options.Value.FirstCid, c.ExecuteScalar<long?>("SELECT MAX(cid) FROM members", transaction: tx) + 1 ?? 0);
+        long last = Math.Max(c.ExecuteScalar<long?>("SELECT value FROM site_counters WHERE name = 'last_cid'", transaction: tx) ?? 0,
+                             c.ExecuteScalar<long?>("SELECT MAX(cid) FROM members", transaction: tx) ?? 0);
+        long cid = Math.Max(options.Value.FirstCid, last + 1);
         c.Execute("INSERT INTO members (cid, name, rating, salt, hash) VALUES (@cid, @name, 1, @salt, @hash)",
             new { cid, name, salt, hash }, tx);
         c.Execute("INSERT INTO member_profiles (cid, email, country, registered_at, email_verified) VALUES (@cid, @email, @country, @now, @v)",
             new { cid, email, country, now = Database.Now(), v = verified ? 1 : 0 }, tx);
+        RememberCid(c, tx, cid);
         tx.Commit();
         return cid;
+    }
+
+    private static void RememberCid(System.Data.IDbConnection c, System.Data.IDbTransaction tx, long cid) =>
+        c.Execute("""
+            INSERT INTO site_counters (name, value) VALUES ('last_cid', @cid)
+            ON CONFLICT(name) DO UPDATE SET value = MAX(value, @cid)
+            """, new { cid }, tx);
+
+    /// <summary>
+    /// Deletes a member and everything the site keeps about them: profile, flight plans, flights and hours, bookings,
+    /// support tickets, sign-ins to other sites, rating requests and team notes. Returns the profile picture's file
+    /// name for the caller to delete (null when there is no such member). The deletion stays in the audit log; the
+    /// CID is never given to anyone else.
+    /// </summary>
+    public string? Delete(long actor, long cid, string reason, string action = "account-delete")
+    {
+        if (Find(cid) is not { } m) return null;
+        using var c = db.Open();
+        using var tx = c.BeginTransaction();
+        var p = new { cid };
+        c.Execute("DELETE FROM ticket_messages WHERE ticket_id IN (SELECT id FROM tickets WHERE cid = @cid)", p, tx);
+        foreach (var table in new[]
+                 {
+                     "tickets", "email_tokens", "oauth_codes", "oauth_tokens", "oauth_consents", "bookings", "flight_plans",
+                     "network_sessions", "rating_requests", "staff_roles", "staff_notes", "member_profiles", "members",
+                 })
+            c.Execute($"DELETE FROM {table} WHERE cid = @cid", p, tx);
+        RememberCid(c, tx, cid);
+        tx.Commit();
+        audit.Log(actor, action, cid.ToString(), string.IsNullOrWhiteSpace(reason) ? m.Name : $"{m.Name}: {reason.Trim()}");
+        return m.Avatar;
+    }
+
+    /// <summary>
+    /// Registrations whose email was not confirmed in time do not count: registered at least <paramref name="after"/>
+    /// ago and no confirmation link still works, they are deleted (never staff, never a member with a rating).
+    /// Returns the profile pictures of those deleted, for the caller to delete.
+    /// </summary>
+    public IReadOnlyList<(long Cid, string Avatar)> DeleteUnconfirmed(TimeSpan after)
+    {
+        long now = Database.Now();
+        using var c = db.Open();
+        var due = c.Query<long>("""
+            SELECT m.cid FROM members m JOIN member_profiles p ON p.cid = m.cid
+            WHERE p.email_verified = 0 AND m.staff_rank = 0 AND m.rating <= 1 AND p.registered_at <= @before
+              AND NOT EXISTS (SELECT 1 FROM email_tokens t
+                              WHERE t.cid = m.cid AND t.purpose = 'verify' AND t.used = 0 AND t.expires_at > @now)
+            """, new { before = now - (long)after.TotalSeconds, now }).ToList();
+        return due.Select(cid => (cid, Delete(0, cid, "email not confirmed in time", "account-expired") ?? "")).ToList();
     }
 
     /// <summary>Checks CID and password like the FSD server does; suspended members are refused.</summary>
@@ -141,16 +199,22 @@ public sealed class MemberService(Database db, IOptions<SiteOptions> options, Au
             .Where(Permissions.Roles.ContainsKey).ToList();
     }
 
-    public IReadOnlyList<Member> Search(string? query, bool suspendedOnly = false, int limit = 100)
+    /// <param name="filter">"" everyone, "suspended" or "unconfirmed" (the email is not confirmed yet).</param>
+    public IReadOnlyList<Member> Search(string? query, string filter = "", int limit = 100)
     {
         using var c = db.Open();
         query = (query ?? "").Trim();
-        string filter = suspendedOnly ? " AND m.suspended = 1" : "";
+        string where = filter switch
+        {
+            "suspended" => " AND m.suspended = 1",
+            "unconfirmed" => " AND COALESCE(p.email_verified, 1) = 0",
+            _ => "",
+        };
         if (query.Length == 0)
-            return c.Query<Member>(Select + " WHERE 1 = 1" + filter + " ORDER BY m.cid DESC LIMIT @limit", new { limit }).ToList();
+            return c.Query<Member>(Select + " WHERE 1 = 1" + where + " ORDER BY m.cid DESC LIMIT @limit", new { limit }).ToList();
         return c.Query<Member>(Select + """
              WHERE (CAST(m.cid AS TEXT) = @query OR m.name LIKE @like OR p.email LIKE @like)
-            """ + filter + " ORDER BY m.cid DESC LIMIT @limit", new { query, like = "%" + query + "%", limit }).ToList();
+            """ + where + " ORDER BY m.cid DESC LIMIT @limit", new { query, like = "%" + query + "%", limit }).ToList();
     }
 
     public IReadOnlyList<Member> Staff()
@@ -162,10 +226,18 @@ public sealed class MemberService(Database db, IOptions<SiteOptions> options, Au
             """).ToList();
     }
 
+    /// <summary>Members, not counting registrations whose email is not confirmed yet.</summary>
     public long Count()
     {
         using var c = db.Open();
-        return c.ExecuteScalar<long>("SELECT COUNT(*) FROM members");
+        return c.ExecuteScalar<long>("SELECT COUNT(*) FROM members m LEFT JOIN member_profiles p ON p.cid = m.cid WHERE COALESCE(p.email_verified, 1) = 1");
+    }
+
+    /// <summary>Registrations waiting for the email to be confirmed.</summary>
+    public long CountUnconfirmed()
+    {
+        using var c = db.Open();
+        return c.ExecuteScalar<long>("SELECT COUNT(*) FROM member_profiles WHERE email_verified = 0");
     }
 
     // ---- staff actions (always audited) ----------------------------------------------------------
