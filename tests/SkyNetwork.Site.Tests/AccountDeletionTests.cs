@@ -59,7 +59,7 @@ public class AccountDeletionTests
         var list = await a.HtmlAsync("/staff/members?show=unconfirmed");
         Assert.Contains("Ivan Waiting", list);
         Assert.DoesNotContain("Vera Confirmed", list);
-        Assert.Contains("email not confirmed", list);
+        Assert.Contains("not confirmed", list);
 
         members.ConfirmEmail(waiting, "ivan@example.com");
         Assert.Equal(3, members.Count());

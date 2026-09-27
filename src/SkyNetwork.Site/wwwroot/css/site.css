@@ -485,7 +485,8 @@ td.num { font-variant-numeric: tabular-nums; }
 /* ---- forms ---- */
 .form { display: grid; gap: 18px; max-width: 560px; align-content: start; }
 /* Deleting an account: set apart, so nobody gets there by accident. */
-.danger-zone { padding: 18px; border: 1px solid var(--danger-soft-line); border-radius: 16px; background: var(--danger-soft); }
+.danger-zone { border: 1px solid var(--danger-soft-line); background: var(--danger-soft); }
+.danger-zone:not(.card) { padding: 18px; border-radius: 16px; }
 .danger-zone .btn-danger { background: var(--card-bg); }
 .form.wide { max-width: 820px; }
 .row { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }

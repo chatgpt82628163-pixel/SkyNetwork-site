@@ -74,7 +74,7 @@
             <span class="badge danger">@L["suspended"]</span>
             @if (m.SuspensionEnds is { } until) { <span class="muted small until">@L["until"] @Format.Utc(until)</span> }
           }
-          else if (!m.EmailVerified) { <span class="badge warn">@L["email not confirmed"]</span> }
+          else if (!m.EmailVerified) { <span class="badge warn" title="@L["email not confirmed"]">@L["not confirmed"]</span> }
           else { <span class="badge ok">@L["active"]</span> }
           @if (why != null) { <span class="badge warn" title="@L[why]">@L["suspicious"]</span> }
         </div></td>
