@@ -228,8 +228,8 @@ html.at-top .site-header::after { opacity: 0; }
 .site-header.open { background: var(--paper); -webkit-backdrop-filter: none; backdrop-filter: none; }
 #scroll-top { position: absolute; top: 0; left: 0; width: 1px; height: 1px; pointer-events: none; }
 .site-header .wrap { display: flex; align-items: center; gap: 20px; height: 64px; }
-/* The mark from the logo and the wordmark as in the logo: SKY in ink, NETWORK in the brand gradient. */
-.brand { display: flex; align-items: center; gap: 10px; flex: none; font: 800 15px/1 var(--display); letter-spacing: .05em; text-transform: uppercase; color: var(--ink); }
+/* The mark from the logo and the wordmark: Sky in ink, Network in the brand gradient. */
+.brand { display: flex; align-items: center; gap: 10px; flex: none; font: 800 18px/1 var(--display); letter-spacing: -0.02em; color: var(--ink); }
 .brand:hover { color: var(--ink); text-decoration: none; }
 .brand .brand-mark { width: 30px; height: 30px; display: block; filter: drop-shadow(0 2px 6px rgba(26,111,224,.28)); transition: transform var(--t-hover) var(--ease); }
 .brand:hover .brand-mark { transform: scale(1.06); }
