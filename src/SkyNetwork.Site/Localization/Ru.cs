@@ -117,7 +117,7 @@ public static class Ru
         ["controller|controllers"] = "диспетчер|диспетчера|диспетчеров",
         ["Virtual aviation network"] = "Сеть виртуальной авиации",
         ["One sky for pilots and controllers"] = "Одно небо для пилотов и диспетчеров",
-        ["On SkyNetwork pilots fly in MSFS, X-Plane and Prepar3D while controllers guide them from the ground — for real, on the radio and by the rules. Membership is free."] = "В SkyNetwork пилоты летают в MSFS, X-Plane и Prepar3D, а диспетчеры ведут их с земли — по-настоящему, по радио и по правилам. Участие бесплатное.",
+        ["On SkyNetwork pilots fly in MSFS, X-Plane and Prepar3D while controllers guide them from the ground — for real, on the radio and by the rules. Membership is free."] = "В SkyNetwork пилоты летают в MSFS, X‑Plane и Prepar3D, а диспетчеры ведут их с земли — по-настоящему, по радио и по правилам. Участие бесплатное.",
         ["File a flight plan"] = "Подать план полёта",
         ["Live map"] = "Карта в реальном времени",
         ["Register"] = "Зарегистрироваться",
@@ -985,7 +985,7 @@ public static class Ru
         // The home page («Дневное небо»).
         ["Online now"] = "В сети сейчас",
         ["The network in numbers"] = "Сеть в цифрах",
-        ["Sessions today"] = "Сессий сегодня",
+        ["Sessions today"] = "Подключений сегодня",
         ["Software and services"] = "Программы и сервисы",
         ["Everything is our own, from the client to the server"] = "Всё своё — от клиента до сервера",
         ["Our own network server, voice server, pilot client and controller radar: one sky, nothing borrowed."] = "Свой сервер сети, голосовой сервер, клиент пилота и радар диспетчера — одно небо, ничего чужого.",
