@@ -440,6 +440,8 @@
     popEl.style.left = Math.round(pt.x) + 'px';
     popEl.style.top = Math.round(above ? pt.y - 6 : pt.y + 6) + 'px';
     popEl.style.transform = above ? 'translate(-50%,-100%)' : 'translate(-50%,0)';
+    // It grows out of the badge it belongs to.
+    popEl.style.transformOrigin = above ? '50% 100%' : '50% 0';
   }
 
   function updatePop() {
@@ -515,14 +517,15 @@
   // Keyboard: focusin on a badge or label shows the popover (tabbed into it).
   map.getContainer().addEventListener('focusin', e => {
     if (coarse.matches) return;
-    const node = e.target.closest('[data-popkind]');
+    // Leaflet puts the focus on the marker's own element, which holds the badge.
+    const node = e.target.closest('[data-popkind]') ?? e.target.querySelector?.('[data-popkind]');
     if (!node) return;
     const at = [parseFloat(node.dataset.lat), parseFloat(node.dataset.lon)];
     if (isNaN(at[0]) || isNaN(at[1])) return;
     showPop(node.dataset.popkind, node.dataset.popkey, at);
   });
   map.getContainer().addEventListener('focusout', e => {
-    if (e.target.closest('[data-popkind]')) hidePop();
+    if (e.target.closest('[data-popkind]') ?? e.target.querySelector?.('[data-popkind]')) hidePop();
   });
 
   // Everyone on the map at once.
@@ -562,7 +565,7 @@
             .on('mouseout', () => hidePop())
             .addTo(sectors);
           label(
-            `<span class="atc-label" title="${esc(c.name)} · ${esc(c.frequency)}" ` +
+            `<span class="atc-label" aria-label="${esc(c.callsign)} · ${esc(c.name)} · ${esc(c.frequency)}" ` +
             `data-popkind="atc" data-popkey="${esc(c.callsign)}" data-lat="${ctrAt[0]}" data-lon="${ctrAt[1]}" ` +
             `style="transform:translate(-50%,-50%);display:inline-block">${esc(c.callsign)}</span>`,
             open('atc', c.callsign))
@@ -597,7 +600,7 @@
       shape.on('mouseover', () => !coarse.matches && showPop('atc', cs, sectAt))
            .on('mouseout', () => hidePop());
       label(
-        `<span class="atc-label" title="${hint}" ` +
+        `<span class="atc-label" aria-label="${hint}" ` +
         `data-popkind="atc" data-popkey="${esc(cs)}" data-lat="${sectAt[0]}" data-lon="${sectAt[1]}" ` +
         `style="transform:translate(-50%,-50%);display:inline-block;text-align:center">${names}</span>`,
         open('atc', cs))
@@ -617,10 +620,10 @@
       // The ATIS chip shows its current letter.
       const chips = order.filter(f => list.some(x => x.facility === f)).map(f => f === 'ATIS'
         ? `<i class="ATIS">${esc(list.find(x => x.facility === 'ATIS').atisCode || 'i')}</i>` : `<i class="${f}">${f[0]}</i>`).join('');
-      const hint = list.map(x => `${esc(x.callsign)} ${esc(x.frequency)}`).join('&#10;');
+      const hint = list.map(x => `${esc(x.callsign)} ${esc(x.frequency)}`).join(', ');
       const aptAt = at;
       label(
-        `<span class="apt-badge" title="${hint}" ` +
+        `<span class="apt-badge" aria-label="${esc(code)}: ${hint}" ` +
         `data-popkind="apt" data-popkey="${esc(code)}" data-lat="${aptAt[0]}" data-lon="${aptAt[1]}" ` +
         `style="transform:translate(-50%,-50%)">${esc(code)}${chips}</span>`,
         open('airport', code))
