@@ -36,6 +36,7 @@ builder.Services.AddSingleton<SupportService>();
 builder.Services.AddSingleton<DivisionService>();
 builder.Services.AddSingleton<ConnectService>();
 builder.Services.AddSingleton<SessionService>();
+builder.Services.AddSingleton<FriendService>();
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<Lang>();
 builder.Services.AddHostedService<SuspensionExpiry>();
@@ -160,6 +161,7 @@ app.MapSiteApi();
 app.MapDivisionApi();
 app.MapConnect();
 app.MapDiscordBot();
+app.MapFriends();
 
 // Language switch: remembered for a year in a cookie, then back to the page.
 app.MapGet("/lang/{code}", (string code, string? r, HttpContext ctx) =>
