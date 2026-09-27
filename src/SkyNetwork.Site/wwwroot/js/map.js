@@ -33,6 +33,30 @@
   const planeLayer = L.layerGroup().addTo(map);   // aircraft: kept between refreshes, so they glide instead of jumping
   const routeLayer = L.layerGroup().addTo(map);   // the selected flight
   const calm = matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Friends of the signed-in member: a star in the cards, highlighted on the map, listed in the panel.
+  const signedIn = el.dataset.signedIn === '1';
+  let friends = new Set();
+  let starred = 0;   // the CID just added: its star pops once
+  async function loadFriends() {
+    if (!signedIn || compact) return;
+    try {
+      const r = await fetch('/api/me/friends', { cache: 'no-store' });
+      if (r.ok) { friends = new Set((await r.json()).friends); render(); }
+    } catch { }
+  }
+  async function toggleFriend(cid) {
+    if (!signedIn) { location.href = '/login?returnUrl=' + encodeURIComponent(location.pathname + location.hash); return; }
+    const adding = !friends.has(cid);
+    try {
+      const r = await fetch('/api/me/friends/' + cid, { method: adding ? 'POST' : 'DELETE', headers: { RequestVerificationToken: el.dataset.xsrf || '' } });
+      if (!r.ok) return;
+      friends = new Set((await r.json()).friends);
+      starred = adding ? cid : 0;
+      render();
+      starred = 0;
+    } catch { }
+  }
   const coarse = matchMedia('(pointer: coarse)');   // touch device: no hover popover
 
   const card = document.getElementById('map-card');
@@ -146,7 +170,8 @@
 
   // Always the aircraft symbol (pointing north when the heading is unknown) with the callsign underneath.
   const planeClass = (p, isSelected) =>
-    'plane' + ((p.onGround ?? p.groundspeed < 40) ? ' ground' : '') + (isSelected ? ' selected' : '') + (p.heading == null ? ' nohdg' : '');
+    'plane' + ((p.onGround ?? p.groundspeed < 40) ? ' ground' : '') + (isSelected ? ' selected' : '') + (p.heading == null ? ' nohdg' : '') +
+    (friends.has(p.cid) ? ' friend' : '');
   const plane = (p, isSelected, turn, born) => L.divIcon({
     className: planeClass(p, isSelected) + (born ? ' born' : ''),
     iconSize: [22, 22], iconAnchor: [11, 11],
@@ -565,7 +590,7 @@
             .on('mouseout', () => hidePop())
             .addTo(sectors);
           label(
-            `<span class="atc-label" aria-label="${esc(c.callsign)} · ${esc(c.name)} · ${esc(c.frequency)}" ` +
+            `<span class="atc-label${friends.has(c.cid) ? ' friend' : ''}" aria-label="${esc(c.callsign)} · ${esc(c.name)} · ${esc(c.frequency)}" ` +
             `data-popkind="atc" data-popkey="${esc(c.callsign)}" data-lat="${ctrAt[0]}" data-lon="${ctrAt[1]}" ` +
             `style="transform:translate(-50%,-50%);display:inline-block">${esc(c.callsign)}</span>`,
             open('atc', c.callsign))
@@ -600,7 +625,7 @@
       shape.on('mouseover', () => !coarse.matches && showPop('atc', cs, sectAt))
            .on('mouseout', () => hidePop());
       label(
-        `<span class="atc-label" aria-label="${hint}" ` +
+        `<span class="atc-label${s.controllers.some(c => friends.has(c.cid)) ? ' friend' : ''}" aria-label="${hint}" ` +
         `data-popkind="atc" data-popkey="${esc(cs)}" data-lat="${sectAt[0]}" data-lon="${sectAt[1]}" ` +
         `style="transform:translate(-50%,-50%);display:inline-block;text-align:center">${names}</span>`,
         open('atc', cs))
@@ -623,7 +648,7 @@
       const hint = list.map(x => `${esc(x.callsign)} ${esc(x.frequency)}`).join(', ');
       const aptAt = at;
       label(
-        `<span class="apt-badge" aria-label="${esc(code)}: ${hint}" ` +
+        `<span class="apt-badge${list.some(x => friends.has(x.cid)) ? ' friend' : ''}" aria-label="${esc(code)}: ${hint}" ` +
         `data-popkind="apt" data-popkey="${esc(code)}" data-lat="${aptAt[0]}" data-lon="${aptAt[1]}" ` +
         `style="transform:translate(-50%,-50%)">${esc(code)}${chips}</span>`,
         open('airport', code))
@@ -676,10 +701,35 @@
         setTimeout(() => planeLayer.removeLayer(e.marker), 400);
       } else planeLayer.removeLayer(e.marker);
     }
+    drawFriends();
     updateCard();
     updatePop();
     return points;
   }
+
+  // ---- friends on the air ----
+  const friendsBox = document.getElementById('map-friends');
+  let friendsHtml = '';
+  function drawFriends() {
+    if (!friendsBox || !data) return;
+    const on = [
+      ...data.pilots.filter(p => friends.has(p.cid)).map(p => ({ kind: 'pilot', cs: p.callsign, name: p.name })),
+      ...data.controllers.filter(c => c.facility !== 'OBS' && friends.has(c.cid)).map(c => ({ kind: 'atc', cs: c.callsign, name: c.name })),
+    ];
+    const html = on.length ? `<div class="mp-friends-head">${t('Friends online')} · ${on.length}</div>` + on.map(f =>
+      `<button type="button" data-select="${f.kind}|${esc(f.cs)}"><span class="cs">${esc(f.cs)}</span><span class="who">${esc(f.name)}</span></button>`).join('') : '';
+    // Only when something changed, so a hover or focus in the list survives the refresh.
+    if (html === friendsHtml) return;
+    friendsHtml = html;
+    friendsBox.innerHTML = html;
+    friendsBox.hidden = !on.length;
+  }
+  friendsBox?.addEventListener('click', e => {
+    const b = e.target.closest('[data-select]');
+    if (!b) return;
+    const [kind, key] = b.dataset.select.split('|');
+    select(kind, key, true);
+  });
 
   // ---- selection ----
   function select(kind, key, fly) {
@@ -705,6 +755,8 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') deselect(); });
   card?.addEventListener('click', e => {
     if (e.target.closest('.close')) return deselect();
+    const friend = e.target.closest('[data-friend]');
+    if (friend) { e.preventDefault(); toggleFriend(Number(friend.dataset.friend)); return; }
     const action = e.target.closest('[data-action]');
     if (action) {
       e.preventDefault();
@@ -829,14 +881,20 @@
   }
 
   // ---- cards ----
-  const head = (title, who, chips) => `
+  const star = cid => {
+    const on = friends.has(cid);
+    const label = on ? t('Remove from friends') : signedIn ? t('Add to friends') : t('Sign in to add friends');
+    return `<button class="star${on ? ' on' : ''}${starred === cid ? ' pop' : ''}" type="button" data-friend="${cid}" aria-pressed="${on}" aria-label="${label}" title="${label}">` +
+      `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></svg></button>`;
+  };
+  const head = (title, who, chips, cid) => `
     <div class="mc-head">
       <div>
         <div class="cs">${title}</div>
         ${who ? `<div class="who">${who}</div>` : ''}
         ${chips ? `<div class="mc-chips">${chips}</div>` : ''}
       </div>
-      <button class="close" type="button" aria-label="${t('Close')}">×</button>
+      ${cid != null ? star(cid) : ''}<button class="close" type="button" aria-label="${t('Close')}">×</button>
     </div>`;
   const cell = (name, value) => `<div><span>${name}</span><b>${value}</b></div>`;
   const aptLink = (code, info) => code
@@ -1010,7 +1068,7 @@
         ${source ? `<div class="muted small">${source}</div>` : ''}${unresolved}</div>` : ''}
       ${fp.remarks ? `<div class="mc-block"><div class="eyebrow">${t('Remarks')}</div><div class="mc-text">${esc(fp.remarks)}</div></div>` : ''}` : '';
 
-    return head(esc(p.callsign), who, chips) + `
+    return head(esc(p.callsign), who, chips, p.cid) + `
       <div class="mc-body">
         ${flight}
         ${grid}
@@ -1049,7 +1107,7 @@
     const sector = (c.facility === 'CTR' || c.facility === 'FSS') ? sectorOf(c) : null;
     const code = prefix(c.callsign);
     return head(esc(c.callsign), `<a href="/members/${c.cid}">${esc(c.name)}</a> · CID ${c.cid}`,
-      `<span class="badge accent">${esc(c.facility)}</span><span class="badge">${esc(c.rating)}</span>`) + `
+      `<span class="badge accent">${esc(c.facility)}</span><span class="badge">${esc(c.rating)}</span>`, c.cid) + `
       <div class="mc-body">
         <div class="mc-grid">
           ${cell(t('Frequency'), esc(c.frequency || '—'))}
@@ -1153,6 +1211,7 @@
     }
   }
   refresh();
+  loadFriends();
   // Every 5 s: the client reports every 5 s and the site reads the server every 5 s, so the map lags by 15 s at most.
   setInterval(refresh, 5000);
 })();

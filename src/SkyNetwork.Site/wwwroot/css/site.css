@@ -1073,3 +1073,38 @@ html.motion [data-reveal].in { opacity: 1; transform: none; }
   .terms-head .btn { margin-top: 0; }
   .terms-meta, .terms-foot { grid-template-columns: 1fr; }
 }
+
+/* ---- friends on the map: amber, like the star that marks them ---- */
+.map-page { --friend: #e59f12; }
+.plane.friend, .plane.friend .cs { color: var(--friend); }
+.plane.friend .cs::before { content: "★"; margin-right: 2px; }
+.plane.friend.selected { color: var(--accent); }
+.atc-label.friend, .apt-badge.friend { box-shadow: 0 0 0 2px var(--friend), 0 4px 12px -4px rgba(0,0,0,.35); }
+.mc-head .star { display: grid; place-items: center; flex: none; width: 28px; height: 28px; margin-left: auto; padding: 0; border: 0; border-radius: 50%; background: var(--surface); color: var(--slate); cursor: pointer;
+  transition: color var(--t-hover) var(--ease), background-color var(--t-hover) var(--ease), transform var(--t-press) var(--ease); }
+.mc-head .star + .close { margin-left: 6px; }
+.mc-head .star svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.mc-head .star:hover { color: var(--friend); background: var(--surface-2); }
+.mc-head .star:active { transform: scale(.9); }
+.mc-head .star.on { color: var(--friend); }
+.mc-head .star.on svg { fill: currentColor; }
+/* Added a moment ago: the star pops once. */
+.mc-head .star.pop svg { animation: star-pop 520ms cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes star-pop { 0% { transform: scale(.6) rotate(-20deg); } 60% { transform: scale(1.25) rotate(6deg); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mc-head .star.pop svg { animation: none; } }
+/* Friends on the air, in the map panel. */
+.mp-friends { display: grid; gap: 2px; max-height: 180px; overflow-y: auto; padding-top: 10px; border-top: 1px solid var(--line); scrollbar-width: thin; }
+.mp-friends[hidden] { display: none; }
+.mp-friends-head { margin: 0 0 4px 8px; font: 600 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--friend); }
+.mp-friends button { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 10px; background: none; color: var(--ink); text-align: left; cursor: pointer;
+  transition: background-color var(--t-hover) var(--ease); }
+.mp-friends button:hover { background: var(--surface-2); }
+.mp-friends .cs { font: 600 13px var(--mono); }
+.mp-friends .who { min-width: 0; overflow: hidden; font-size: 12.5px; color: var(--slate); text-overflow: ellipsis; white-space: nowrap; }
+/* The friends page in the account. */
+.friend-list { display: grid; gap: 8px; margin: 0 0 28px; padding: 0; list-style: none; }
+.friend-list li { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--card-bg); }
+.friend-list .who { flex: 1; min-width: 0; }
+.friend-list .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-list .status { font-size: 13px; color: var(--slate); }
+.friend-list .status.on { color: var(--live); font-weight: 600; }

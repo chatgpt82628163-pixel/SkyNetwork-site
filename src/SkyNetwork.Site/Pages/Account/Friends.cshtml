@@ -1,0 +1,41 @@
+@page "/account/friends"
+@model SkyNetwork.Site.Pages.Account.FriendsModel
+@{ ViewData["Title"] = L["Friends"]; }
+<div class="wrap page with-side">
+  <partial name="_AccountNav" />
+  <div>
+    <h1 style="font-size:30px">@L["Friends"]</h1>
+    <p class="muted">@L["Friends are highlighted on the map and listed there when they are on the air. They are not told that you added them."]</p>
+    @if (Model.Message != null) { <div class="alert ok">@L[Model.Message]</div> }
+    @if (Model.Error != null) { <div class="alert error">@L[Model.Error]</div> }
+    <form method="post" asp-page-handler="Add" class="inline-form" style="margin:18px 0 28px">
+      <input name="Cid" value="@Model.Cid" inputmode="numeric" autocomplete="off" placeholder="CID" aria-label="CID" required style="max-width:160px">
+      <button class="btn btn-primary" type="submit">@L["Add by CID"]</button>
+    </form>
+    @if (Model.List.Count == 0)
+    {
+      <div class="empty">@L["No friends yet. Add them here by CID, or with the star in a pilot's or controller's card on the map."]</div>
+    }
+    else
+    {
+      <ul class="friend-list">
+        @foreach (var f in Model.List)
+        {
+          var cs = Model.OnAir(f.Cid);
+          <li>
+            <partial name="_Avatar" model="f" view-data='new ViewDataDictionary(ViewData) { ["AvatarStyle"] = "width:40px;height:40px;font-size:14px" }' />
+            <div class="who">
+              <b><a href="/members/@f.Cid">@f.Name</a></b>
+              @if (cs != null) { <span class="status on">@L["On the air as"] <a class="mono" href="/map#@Uri.EscapeDataString(cs)">@cs</a></span> }
+              else { <span class="status">CID @f.Cid · @L["offline"]</span> }
+            </div>
+            <form method="post" asp-page-handler="Remove">
+              <input type="hidden" name="cid" value="@f.Cid">
+              <button class="btn btn-small" type="submit">@L["Remove"]</button>
+            </form>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>
