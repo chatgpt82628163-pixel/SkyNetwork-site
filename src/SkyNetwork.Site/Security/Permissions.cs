@@ -71,7 +71,8 @@ public static class Permissions
             {
                 "events" => Perm.StaffArea | Perm.Events,
                 "news" => Perm.StaffArea | Perm.News,
-                "support" => Perm.StaffArea | Perm.Tickets | Perm.ViewMembers | Perm.ResetPasswords,
+                // Setting someone else's password stays with administrators.
+                "support" => Perm.StaffArea | Perm.Tickets | Perm.ViewMembers,
                 "fsup" => Perm.StaffArea | Perm.Online,
                 _ => Perm.None,
             };
