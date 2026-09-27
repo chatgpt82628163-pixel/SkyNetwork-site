@@ -969,3 +969,31 @@ html.motion [data-reveal].in { opacity: 1; transform: none; }
   .problem-time { margin-left: 0; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .status-summary.danger .status-orb { animation: none; } }
+
+/* ---- site regulations (/docs/terms): a legal text set for reading, with its contents and a download ---- */
+.terms { max-width: 780px; }
+.terms-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
+.terms-head h1 { font-size: 32px; line-height: 1.15; margin-bottom: 8px; }
+.terms-head p { margin: 0; }
+.terms-head .btn { flex: none; margin-top: 30px; }
+.terms-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 0 0 24px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--line); }
+.terms-meta div { padding: 12px 16px; background: var(--card-bg); }
+.terms-meta dt { font: 600 11.5px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--slate); margin-bottom: 4px; }
+.terms-meta dd { margin: 0; font-size: 14px; color: var(--ink); }
+.terms p, .terms li { line-height: 1.7; color: var(--ink); }
+.terms-toc { display: grid; gap: 2px; margin: 24px 0 8px; padding: 14px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--line); }
+.terms-toc a { padding: 6px 10px; border-radius: 8px; color: var(--ink); font-size: 14.5px; }
+.terms-toc a:hover { background: var(--card-bg); color: var(--accent-ink); text-decoration: none; }
+.terms section { scroll-margin-top: 96px; }
+.terms h2 { font-size: 21px; margin: 40px 0 12px; }
+.terms-letters { list-style: none; padding-left: 20px; }
+.terms-letters li { margin-bottom: 6px; }
+.terms-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); }
+.terms-foot > div { display: grid; gap: 4px; font-size: 14px; color: var(--slate); }
+.terms-foot b { color: var(--ink); text-transform: uppercase; font-size: 12.5px; letter-spacing: .06em; }
+.terms-stamp { padding: 16px; border: 1px solid var(--line-strong); border-radius: 14px; text-align: center; }
+@media (max-width: 720px) {
+  .terms-head { flex-direction: column; }
+  .terms-head .btn { margin-top: 0; }
+  .terms-meta, .terms-foot { grid-template-columns: 1fr; }
+}
