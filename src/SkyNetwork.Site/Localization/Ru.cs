@@ -117,7 +117,7 @@ public static class Ru
         ["controller|controllers"] = "диспетчер|диспетчера|диспетчеров",
         ["Virtual aviation network"] = "Сеть виртуальной авиации",
         ["One sky for pilots and controllers"] = "Одно небо для пилотов и диспетчеров",
-        ["On SkyNetwork pilots fly in MSFS, X-Plane and Prepar3D while controllers guide them from the ground — for real, on the radio and by the rules."] = "В SkyNetwork пилоты летают в MSFS, X‑Plane и Prepar3D, а диспетчеры ведут их с земли — по-настоящему, по радио и по правилам.",
+        ["On SkyNetwork pilots fly in MSFS, X-Plane and Prepar3D while controllers guide them from the ground — for real, on the radio and by the rules."] = "В SkyNetwork пилоты летают в MSFS, X‑Plane и Prepar3D, а диспетчеры ведут их с земли — по‑настоящему, по радио и по правилам.",
         ["File a flight plan"] = "Подать план полёта",
         ["Live map"] = "Карта в реальном времени",
         ["Register"] = "Зарегистрироваться",
