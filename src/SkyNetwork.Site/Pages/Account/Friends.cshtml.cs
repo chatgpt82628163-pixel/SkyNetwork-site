@@ -21,7 +21,7 @@ public sealed class FriendsModel(CurrentUser me, FriendService friends, NetworkF
     }
 
     /// <summary>The callsign the member is on the air with right now, or null.</summary>
-    public string? OnAir(long cid) =>
+    public string? CallsignOf(long cid) =>
         _online.Pilots.FirstOrDefault(p => p.Cid == cid)?.Callsign
         ?? _online.Controllers.FirstOrDefault(c => c.Cid == cid && c.FacilityName != "OBS")?.Callsign;
 
