@@ -4,8 +4,8 @@
 <div class="wrap page with-side">
   <partial name="_AccountNav" />
   <div>
-    <h1 style=”font-size:30px”>@L[“Flight plan”]</h1>
-    <p class=”muted”>@L[“File your plan before connecting. Press “Refresh” in SkyPilot and the plan goes to the controllers. While you are online SkyPilot checks the website every 30 seconds.”] <a href=”/planner”>@L[“Need a route? Try the planner.”]</a></p>
+    <h1 style="font-size:30px">@L["Flight plan"]</h1>
+    <p class="muted">@L["File your plan before connecting. Press “Refresh” in SkyPilot and the plan goes to the controllers. While you are online SkyPilot checks the website every 30 seconds."] <a href="/planner">@L["Need a route? Try the planner."]</a></p>
     @if (Model.Saved) { <div class="alert ok">@L["Plan filed. Press “Refresh” in SkyPilot."]</div> }
     @if (Model.Error != null) { <div class="alert error">@L[Model.Error]</div> }
     @if (Model.Imported) { <div class="alert ok">@L["Plan loaded from SimBrief. Check the fields and press “File plan”."]</div> }
