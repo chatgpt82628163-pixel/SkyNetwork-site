@@ -1,0 +1,160 @@
+@page "/planner"
+@model PlannerModel
+@{
+    ViewData["Title"] = L["Flight planner"];
+    bool hasResult = Model.Route != null && Model.Estimates != null;
+    var r = Model.Route;
+    var e = Model.Estimates;
+    string dep = Model.Departure;
+    string dest = Model.Destination;
+    string type = Model.AircraftType;
+    string alt = Model.Alternate;
+    // SimBrief link
+    string sbUrl = hasResult
+        ? $"https://dispatch.simbrief.com/options/custom?orig={Uri.EscapeDataString(dep)}&dest={Uri.EscapeDataString(dest)}&type={Uri.EscapeDataString(type)}&route={Uri.EscapeDataString(r!.Route)}"
+        : "";
+    // Fill flight plan link
+    string fpUrl = hasResult
+        ? $"/flightplan?dep={Uri.EscapeDataString(dep)}&dest={Uri.EscapeDataString(dest)}&type={Uri.EscapeDataString(type)}&route={Uri.EscapeDataString(r!.Route)}&level={Uri.EscapeDataString(e!.CruiseLevelStr)}&alt={Uri.EscapeDataString(alt)}&speed={e.CruiseSpeedKt}"
+        : "";
+}
+@section Head {
+  @if (hasResult && r!.Points.Count > 1)
+  {
+    <link rel="stylesheet" href="~/lib/leaflet/leaflet.css">
+  }
+}
+<div class="wrap page">
+  <div>
+    <h1 style="font-size:30px">@L["Flight planner"]</h1>
+    <p class="muted">@L["Route, cruise level, time and fuel estimate for a flight — for simulator use only."]</p>
+
+    <form method="get" asp-page="/Planner" class="form wide" style="margin-bottom:24px">
+      <div class="row">
+        <label>@L["Departure"]<input name="Departure" value="@dep" class="mono" required maxlength="4" placeholder="UUEE" autocomplete="off"></label>
+        <label>@L["Destination"]<input name="Destination" value="@dest" class="mono" required maxlength="4" placeholder="ULLI" autocomplete="off"></label>
+        <label>@L["Aircraft type"]<input name="AircraftType" value="@type" class="mono" maxlength="8" placeholder="A320" autocomplete="off"></label>
+        <label>@L["Alternate"]<input name="Alternate" value="@alt" class="mono" maxlength="4" placeholder="@L["optional"]" autocomplete="off"></label>
+      </div>
+      <div><button class="btn btn-primary" type="submit">@L["Plan"]</button></div>
+    </form>
+
+    @if (Model.Error != null)
+    {
+      <div class="alert error">@Model.Error</div>
+    }
+
+    @if (hasResult)
+    {
+      <div class="card" style="margin-bottom:16px">
+        <div class="eyebrow">@dep → @dest · @L["Estimate, not for real-world use"]</div>
+        <div style="margin:12px 0 8px">
+          <span class="badge accent">@(r!.IsDirect ? "DCT" : L["Airway route"])</span>
+          <b style="margin-left:8px">@((int)Math.Round(r.DistanceNm)) NM</b>
+          <span class="muted" style="margin-left:8px">@e!.CruiseLevelStr · @e.CruiseSpeedKt kt · @Model.EteFormatted</span>
+        </div>
+
+        @* Route string with copy button *@
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <code id="route-str" style="word-break:break-all;background:var(--bg2);padding:6px 10px;border-radius:6px;flex:1;font-size:14px">@(r.Route)</code>
+          <button class="btn btn-small" type="button" onclick="navigator.clipboard.writeText(document.getElementById('route-str').textContent)" title="@L["Copy route"]">@L["Copy"]</button>
+        </div>
+
+        @* Fuel breakdown *@
+        <details style="margin-bottom:12px">
+          <summary style="cursor:pointer;font-weight:600">@L["Fuel estimate"]&thinsp;—&thinsp;@e.TotalKg kg @L["total"]</summary>
+          <table style="margin-top:8px;border-spacing:0 4px;width:100%">
+            <tr><td class="muted small">@L["Trip fuel"]</td><td style="text-align:right;font-variant-numeric:tabular-nums">@e.TripKg kg</td></tr>
+            <tr><td class="muted small">@L["Contingency (5%)"]</td><td style="text-align:right;font-variant-numeric:tabular-nums">@e.ContingencyKg kg</td></tr>
+            <tr><td class="muted small">@L["Final reserve (30 min)"]</td><td style="text-align:right;font-variant-numeric:tabular-nums">@e.FinalReserveKg kg</td></tr>
+            @if (e.AlternateKg > 0)
+            {
+              <tr><td class="muted small">@L["Alternate"]</td><td style="text-align:right;font-variant-numeric:tabular-nums">@e.AlternateKg kg</td></tr>
+            }
+            <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">@L["Total"]</td><td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">@e.TotalKg kg</td></tr>
+          </table>
+        </details>
+
+        @* METAR section (loaded client-side) *@
+        <div id="metar-area" style="margin-bottom:12px">
+          <div class="muted small" id="metar-dep">@L["Loading METAR"]…</div>
+          @if (!string.IsNullOrEmpty(dest))
+          {
+            <div class="muted small" id="metar-dest" style="margin-top:4px">@L["Loading METAR"]…</div>
+          }
+        </div>
+
+        @* Chart links and actions *@
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <a class="btn btn-small" href="https://chartfox.org/@dep" target="_blank" rel="noopener">@dep @L["charts"]</a>
+          <a class="btn btn-small" href="https://chartfox.org/@dest" target="_blank" rel="noopener">@dest @L["charts"]</a>
+          @if (!string.IsNullOrEmpty(sbUrl))
+          {
+            <a class="btn btn-small" href="@sbUrl" target="_blank" rel="noopener">@L["Open in SimBrief"]</a>
+          }
+          @if (Me.IsSignedIn && !string.IsNullOrEmpty(fpUrl))
+          {
+            <a class="btn btn-small btn-primary" href="@fpUrl">@L["Fill flight plan"]</a>
+          }
+          else if (!Me.IsSignedIn)
+          {
+            <a class="btn btn-small" href="/login?r=/planner?Departure=@Uri.EscapeDataString(dep)%26Destination=@Uri.EscapeDataString(dest)%26AircraftType=@Uri.EscapeDataString(type)">@L["Sign in to file"]</a>
+          }
+        </div>
+      </div>
+
+      @* Route map *@
+      @if (r.Points.Count > 1)
+      {
+        <div id="planner-map" style="height:340px;border-radius:10px;overflow:hidden;margin-bottom:16px"></div>
+      }
+    }
+  </div>
+</div>
+
+@section Scripts {
+  @if (hasResult && r!.Points.Count > 1)
+  {
+    <script src="~/lib/leaflet/leaflet.js"></script>
+  }
+  <script>
+    (function () {
+      @if (hasResult)
+      {
+        // Load METAR
+        <text>
+        function loadMetar(icao, el) {
+          fetch('/api/v1/metar/' + icao)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (el) el.textContent = d && d.metar ? d.metar : icao + ': no METAR'; })
+            .catch(() => { if (el) el.textContent = icao + ': METAR unavailable'; });
+        }
+        loadMetar('@dep', document.getElementById('metar-dep'));
+        @if (!string.IsNullOrEmpty(dest)) { <text>loadMetar('@dest', document.getElementById('metar-dest'));</text> }
+        </text>
+      }
+
+      @if (hasResult && r!.Points.Count > 1)
+      {
+        <text>
+        // Route map
+        var pts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            r!.Points.Select(p => new[] { Math.Round(p.Lat, 4), Math.Round(p.Lon, 4) }).ToArray()));
+        var map = L.map('planner-map', { zoomControl: true });
+        L.tileLayer('/tiles/osm/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 13 }).addTo(map);
+        var line = L.polyline(pts, { color: '#3b82f6', weight: 2.5, opacity: 0.85 }).addTo(map);
+        map.fitBounds(line.getBounds(), { padding: [24, 24] });
+        // Add small dots for fixes
+        pts.forEach(function(p, i) {
+          if (i === 0 || i === pts.length - 1) return;
+          L.circleMarker(p, { radius: 3, color: '#3b82f6', fillOpacity: 1, weight: 1.5 }).addTo(map);
+        });
+        // Markers for dep and dest
+        var icon = function(label) { return L.divIcon({ html: '<span style="background:#3b82f6;color:#fff;font-size:11px;font-weight:600;padding:2px 5px;border-radius:4px;white-space:nowrap">' + label + '</span>', className: '', iconAnchor: [0, 0] }); };
+        L.marker(pts[0], { icon: icon('@dep') }).addTo(map);
+        L.marker(pts[pts.length - 1], { icon: icon('@dest') }).addTo(map);
+        </text>
+      }
+    })();
+  </script>
+}

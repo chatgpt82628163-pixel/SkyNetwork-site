@@ -83,6 +83,48 @@ public static class ApiEndpoints
             return Results.Ok(new { waypoints = points.Select(w => new object[] { w.Ident, Math.Round(w.Lat, 4), Math.Round(w.Lon, 4), w.Airway }), unresolved });
         });
 
+        // Flight planner: suggest a route, cruise level and fuel estimate.
+        v1.MapGet("/routes/suggest", (string? departure, string? destination, string? type, string? alternate, NavData nav) =>
+        {
+            if (departure is not { Length: >= 3 and <= 4 } || destination is not { Length: >= 3 and <= 4 })
+                return Results.BadRequest(new { error = "departure and destination must be 3–4 character ICAO codes" });
+            string dep = departure.ToUpperInvariant();
+            string dest = destination.ToUpperInvariant();
+            string acType = (type ?? "A320").Trim().ToUpperInvariant();
+            if (acType.Length is 0 or > 8) return Results.BadRequest(new { error = "invalid type" });
+
+            var found = nav.FindRoute(dep, dest);
+            var perf = AircraftPerf.Get(acType);
+
+            // Get airport positions from the route points for bearing calculation
+            double depLat = found.Points.Count > 0 ? found.Points[0].Lat : 0;
+            double depLon = found.Points.Count > 0 ? found.Points[0].Lon : 0;
+            double destLat = found.Points.Count > 0 ? found.Points[^1].Lat : 0;
+            double destLon = found.Points.Count > 0 ? found.Points[^1].Lon : 0;
+
+            var est = AircraftPerf.Estimate(found.DistanceNm, perf, alternate, depLat, depLon, destLat, destLon);
+            int eteH = est.EteMinutes / 60, eteM = est.EteMinutes % 60;
+            return Results.Ok(new
+            {
+                route = found.Route,
+                distanceNm = (int)Math.Round(found.DistanceNm),
+                points = found.Points.Select(p => new { name = p.Ident, lat = Math.Round(p.Lat, 4), lon = Math.Round(p.Lon, 4) }),
+                cruiseLevel = est.CruiseLevelStr,
+                cruiseSpeedKt = est.CruiseSpeedKt,
+                ete = $"{eteH}:{eteM:D2}",
+                fuel = new
+                {
+                    trip = est.TripKg,
+                    contingency = est.ContingencyKg,
+                    reserve = est.FinalReserveKg,
+                    alternate = est.AlternateKg,
+                    total = est.TotalKg,
+                    unit = "kg",
+                },
+                notes = "Fuel and time are estimates only — not for real-world use.",
+            });
+        });
+
         v1.MapGet("/airports/{icao}/layout", async (string icao, AirportLayout layouts, HttpContext ctx) =>
         {
             string? json = await layouts.GetAsync(icao, ctx.RequestAborted);
