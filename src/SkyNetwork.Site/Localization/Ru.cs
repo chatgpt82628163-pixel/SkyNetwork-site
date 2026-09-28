@@ -1222,6 +1222,7 @@ public static class Ru
         ["Uploaded"] = "Загружено",
         ["Unpublished"] = "Снято с публикации",
         ["Deleted"] = "Удалено",
+        ["Version already exists"] = "Версия уже существует",
         ["Download coming soon."] = "Скачивание появится скоро.",
         // releases health check
         ["No published release"] = "Нет опубликованного релиза",
