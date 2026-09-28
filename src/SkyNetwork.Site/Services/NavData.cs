@@ -12,7 +12,7 @@ public readonly record struct RoutePoint(string Ident, double Lat, double Lon, s
 
 /// <summary>
 /// Waypoints and airways for drawing the routes of flight plans filed without SimBrief. Two sources: a bundled world
-/// set (Nav/fixes.dat.gz and Nav/airways.dat.gz, see Nav/LICENSE.txt) and everything seen in the SimBrief plans that
+/// set (Nav/fixes.dat.gz and Nav/airways.dat.gz, built by tools/airac-import, see Nav/README.txt) and everything seen in the SimBrief plans that
 /// members import, kept in the site's database — so the data gets fresher the more the network is used.
 /// </summary>
 public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogger<NavData> log)

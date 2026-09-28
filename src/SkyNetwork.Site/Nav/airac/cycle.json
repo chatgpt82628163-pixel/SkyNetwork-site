@@ -1,0 +1,18 @@
+{
+  "cycle": "2609",
+  "revision": "1",
+  "valid": "03.09.2026 – 01.10.2026",
+  "parsed": "26/08/2026 - 11:06:05 UTC",
+  "source": "MSFS 2024 navigation data (AIRAC 2609)",
+  "fixes": 262237,
+  "segments": 91054,
+  "airways": 9864,
+  "pointTypes": {
+    "Маршрутная точка": 84103,
+    "VOR/DME": 8321,
+    "NDB": 2176,
+    "NDB (терминальный)": 889,
+    "Терминальная точка": 166882
+  },
+  "skippedLongSegments": 0
+}

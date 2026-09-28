@@ -11,10 +11,10 @@ public class NavDataTests
     {
         using var site = new SiteFactory();
         var nav = site.Get<NavData>();
-        // ZUBOK and MINPU sit on G487 with ABELA between them (bundled data); N0450F350 is a speed/level group,
-        // 5530N03730E a coordinate, ZZZZZ nothing at all.
-        var (points, unresolved) = nav.Decode("URSS", "UUEE", "N0450F350 ZUBOK G487 MINPU DCT 5530N03730E ZZZZZ");
-        Assert.Equal(["URSS", "ZUBOK", "ABELA", "MINPU", "5530N03730E", "UUEE"], points.Select(p => p.Ident));
+        // BINOL and ERSAR sit on G487 with GUBOR between them (bundled data, AIRAC 2609); N0450F350 is a speed/level
+        // group, 5530N03730E a coordinate, ZZZZZ nothing at all.
+        var (points, unresolved) = nav.Decode("URSS", "UUEE", "N0450F350 BINOL G487 ERSAR DCT 5530N03730E ZZZZZ");
+        Assert.Equal(["URSS", "BINOL", "GUBOR", "ERSAR", "5530N03730E", "UUEE"], points.Select(p => p.Ident));
         Assert.Equal(["", "", "G487", "G487", "", ""], points.Select(p => p.Airway));
         Assert.Equal((55.5, 37.5), (points[4].Lat, points[4].Lon));
         Assert.Equal(["ZZZZZ"], unresolved);

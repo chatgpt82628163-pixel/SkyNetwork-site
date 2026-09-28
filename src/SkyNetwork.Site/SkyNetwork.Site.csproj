@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Bundled waypoint and airway files (see Nav/LICENSE.txt). -->
+    <!-- Bundled waypoint and airway files (see Nav/README.txt). -->
     <Content Include="Nav/**" CopyToOutputDirectory="PreserveNewest" />
     <!-- Aircraft performance profiles (OpenAP, LGPL-3.0; see LICENCES/openap.txt). -->
     <Content Include="Aircraft/**" CopyToOutputDirectory="PreserveNewest" />
