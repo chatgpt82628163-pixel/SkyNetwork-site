@@ -1187,7 +1187,8 @@
     } catch { return; }
     const pc = document.getElementById('pilot-count'), ac = document.getElementById('atc-count'), up = document.getElementById('map-updated');
     if (pc) pc.textContent = data.pilots.length;
-    if (ac) ac.textContent = data.controllers.length;
+    // ATIS stations and observers are connected but control no one: they are not counted.
+    if (ac) ac.textContent = data.controllers.filter(c => c.facility !== 'OBS' && c.facility !== 'ATIS').length;
     if (up) up.textContent = data.available ? t('Updated') + ' ' + utc(new Date(data.updated)) : t('Server not responding');
     const list = document.getElementById('map-callsigns');
     if (list) list.innerHTML = [...data.pilots, ...data.controllers].map(x => `<option value="${esc(x.callsign)}">`).join('');

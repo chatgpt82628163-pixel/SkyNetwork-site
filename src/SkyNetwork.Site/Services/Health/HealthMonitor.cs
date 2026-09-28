@@ -222,7 +222,7 @@ public sealed class HealthMonitor(
                 new Say("Make sure the network server is running and its data feed answers on the server:"))
             { Command = $"ssh SW \"curl -s -m 5 {options.Value.DataFeedUrl} | head -c 300\"" };
         var age = DateTime.UtcNow - s.Updated;
-        var value = new Say("{0} pilots · {1} controllers", s.Pilots.Count, s.Controllers.Count);
+        var value = new Say("{0} pilots · {1} controllers", s.Pilots.Count, s.OnPosition.Count);
         int stale = Math.Max(90, options.Value.FeedPollSeconds * 6);
         if (s.Updated != default && age.TotalSeconds > stale)
             return new HealthCheck("feed", Network, title, HealthLevel.Warning, value,
