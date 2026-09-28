@@ -392,7 +392,7 @@ public class IsaTests
         double hpa = WindsAloftService.FtToPressureHpa(altFt);
         Assert.Equal(expectedHpa, hpa, toleranceHpa);
         double back = WindsAloftService.PressureHpaToFt(hpa);
-        Assert.Equal(altFt, back, 100); // ±100 ft
+        Assert.Equal(altFt, back, 100.0); // ±100 ft (a double is a tolerance; an int would be decimal places)
     }
 
     [Theory]
