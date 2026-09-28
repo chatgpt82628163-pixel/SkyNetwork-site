@@ -1,0 +1,90 @@
+@page "/staff/releases"
+@model SkyNetwork.Site.Pages.Staff.ReleasesModel
+@{ ViewData["Title"] = L["Releases"]; }
+<h1 style="font-size:30px">@L["Releases"]</h1>
+<p class="muted">@L["Program installers served from the site. The newest published version is offered for download and returned by the API."]</p>
+
+@if (Model.Error != null)
+{
+  <p class="form-error">@Model.Error</p>
+}
+@if (Model.Message != null)
+{
+  <p class="form-ok">@Model.Message</p>
+}
+
+<h2 style="font-size:18px;margin-top:28px">@L["Upload a new version"]</h2>
+<form method="post" asp-page-handler="Upload" enctype="multipart/form-data">
+  <div asp-validation-summary="All" class="form-error"></div>
+  <label style="display:block;margin-bottom:8px">
+    @L["Program"]<br>
+    <select name="Product" style="margin-top:4px">
+      <option value="skypilot">SkyPilot</option>
+      <option value="network-atc">Network-ATC</option>
+    </select>
+  </label>
+  <label style="display:block;margin-bottom:8px">
+    @L["Version"]<br>
+    <input name="Version" placeholder="0.3.0" pattern="^\d+\.\d+\.\d+$" required style="margin-top:4px">
+  </label>
+  <label style="display:block;margin-bottom:8px">
+    @L["Release notes (Russian)"]<br>
+    <textarea name="Notes" rows="3" style="margin-top:4px;width:100%;max-width:500px"></textarea>
+  </label>
+  <label style="display:block;margin-bottom:8px">
+    @L["Release notes (English)"]<br>
+    <textarea name="NotesEn" rows="3" style="margin-top:4px;width:100%;max-width:500px"></textarea>
+  </label>
+  <label style="display:block;margin-bottom:12px">
+    @L["Installer (.exe, up to 300 MB)"]<br>
+    <input type="file" name="Installer" accept=".exe" required style="margin-top:4px">
+  </label>
+  <button class="btn btn-primary" type="submit">@L["Upload"]</button>
+</form>
+
+@foreach (var product in Model.ByProduct.Keys.Order())
+{
+  var list = Model.ByProduct[product];
+  <h2 style="font-size:18px;margin-top:32px">@(product == "skypilot" ? "SkyPilot" : "Network-ATC")</h2>
+  @if (list.Count == 0)
+  {
+    <p class="muted">@L["No releases yet."]</p>
+  }
+  else
+  {
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>@L["Version"]</th>
+          <th class="num">@L["Size"]</th>
+          <th>@L["Date"]</th>
+          <th class="num">@L["Downloads"]</th>
+          <th>@L["Status"]</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          @foreach (var r in list)
+          {
+            <tr>
+              <td>@r.Version</td>
+              <td class="num">@Format.Bytes(r.Size)</td>
+              <td>@r.Created.ToString("yyyy-MM-dd")</td>
+              <td class="num">@r.Downloads</td>
+              <td>@(r.Published ? L["Published"] : L["Draft"])</td>
+              <td style="white-space:nowrap">
+                <form method="post" asp-page-handler="@(r.Published ? "Unpublish" : "Publish")" style="display:inline">
+                  <input type="hidden" name="Id" value="@r.Id">
+                  <button class="btn btn-sm" type="submit">@(r.Published ? L["Unpublish"] : L["Publish"])</button>
+                </form>
+                <form method="post" asp-page-handler="Delete" style="display:inline" onsubmit="return confirm('@L["Delete this release?"]')">
+                  <input type="hidden" name="Id" value="@r.Id">
+                  <button class="btn btn-sm btn-danger" type="submit">@L["Delete"]</button>
+                </form>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

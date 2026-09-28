@@ -1,4 +1,5 @@
 @page "/docs/software"
+@model SkyNetwork.Site.Pages.Docs.SoftwareModel
 @{ ViewData["Title"] = L["Software"]; }
 <div class="wrap page with-side">
   <partial name="_DocsNav" />
@@ -12,13 +13,29 @@
         <p class="muted small">@L["The client for Microsoft Flight Simulator 2020 and 2024, X-Plane 11 and 12 and Prepar3D v4–v6: network connection, flight plan from the website, messages, nearby controllers. It finds the running simulator by itself."]</p>
         <p class="sim-list"><span class="badge accent">MSFS 2020 / 2024</span> <span class="badge accent">X-Plane 11 / 12</span> <span class="badge accent">Prepar3D v4–v6</span></p>
         <p class="muted small">@L["X-Plane: copy the XPlanePlugin/SkyPilot folder from the SkyPilot folder into X-Plane/Resources/plugins. To see other pilots, add a CSL model package to it, for example the free Bluebell (see CSL-README.txt there)."]</p>
-        <a class="btn btn-primary" href="https://github.com/chatgpt82628163-pixel/SkyPilot/releases/latest">@L["Download SkyPilot"]</a>
+        @if (Model.SkyPilot != null)
+        {
+          <p class="muted small" style="margin-bottom:6px">@Model.SkyPilot.Version · @Format.Bytes(Model.SkyPilot.Size) · @Model.SkyPilot.Created.ToString("yyyy-MM-dd")</p>
+          <a class="btn btn-primary" href="/download/skypilot">@L["Download SkyPilot"]</a>
+        }
+        else
+        {
+          <a class="btn btn-primary" href="https://github.com/chatgpt82628163-pixel/SkyPilot/releases/latest">@L["Download SkyPilot"]</a>
+        }
       </div>
       <div class="card">
         <div class="eyebrow">@L["For controllers"]</div>
         <h3>Network-ATC</h3>
         <p class="muted small">@L["Radar: EuroScope and .natc sectors, handoffs, SID/STAR, departure and arrival lists, STCA, plugins."]</p>
-        <a class="btn btn-primary" href="https://github.com/chatgpt82628163-pixel/Network-ATC/releases/latest">@L["Download Network-ATC"]</a>
+        @if (Model.NetworkAtc != null)
+        {
+          <p class="muted small" style="margin-bottom:6px">@Model.NetworkAtc.Version · @Format.Bytes(Model.NetworkAtc.Size) · @Model.NetworkAtc.Created.ToString("yyyy-MM-dd")</p>
+          <a class="btn btn-primary" href="/download/network-atc">@L["Download Network-ATC"]</a>
+        }
+        else
+        {
+          <a class="btn btn-primary" href="https://github.com/chatgpt82628163-pixel/Network-ATC/releases/latest">@L["Download Network-ATC"]</a>
+        }
       </div>
     </div>
     <div class="card" style="margin-top:16px">

@@ -1,3 +1,4 @@
+using Microsoft.Net.Http.Headers;
 using SkyNetwork.Site.Data;
 using SkyNetwork.Site.Services;
 
@@ -14,6 +15,15 @@ public static class ApiEndpoints
         // SkyPilot (see skypilot docs/website-api.md).
         app.MapGet("/api/flightplans/latest", (long cid, FlightPlanService plans) =>
             plans.Latest(cid) is { } p ? Results.Ok(PlanDto(p)) : Results.NotFound()).RequireCors("api");
+
+        // Program installer downloads: /download/{product} or /download/{product}/{version}.
+        app.MapGet("/download/{product}", (string product, ReleaseService releases, HttpContext ctx) =>
+            ServeRelease(releases.LatestPublished(product), releases, ctx));
+        app.MapGet("/download/{product}/{version}", (string product, string version, ReleaseService releases, HttpContext ctx) =>
+        {
+            var r = releases.GetByVersion(product, version);
+            return r is { Published: true } ? ServeRelease(r, releases, ctx) : Results.NotFound();
+        });
 
         // Uploaded banners: random names, never overwritten, so cached for a year.
         app.MapGet("/uploads/{name}", (string name, UploadStore uploads, HttpContext ctx) =>
@@ -334,6 +344,51 @@ public static class ApiEndpoints
             var result = await aloft.GetAloftAsync(pts, flLevel, validTime, ct);
             return Results.Ok(new { attribution = "Weather data by Open-Meteo.com", points = result });
         });
+        // GitHub "latest release" API shape so the client programs keep their update logic.
+        v1.MapGet("/releases/{product}/latest", (string product, ReleaseService releases, HttpContext ctx,
+            Microsoft.Extensions.Options.IOptions<SiteOptions> opts) =>
+        {
+            var r = releases.LatestPublished(product);
+            if (r == null) return Results.NotFound();
+            string baseUrl = opts.Value.PublicUrl is { Length: > 0 } u ? u.TrimEnd('/')
+                : $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+            string assetName = ReleaseService.DisplayName(product, r.Version);
+            string downloadUrl = $"{baseUrl}/download/{product}/{r.Version}";
+            ctx.Response.Headers.CacheControl = "public, max-age=300";
+            return Results.Ok(new
+            {
+                tag_name = r.Version,
+                html_url = $"{baseUrl}/docs/software",
+                draft = false,
+                prerelease = false,
+                published_at = r.Created.ToString("O"),
+                body = r.Notes,
+                assets = new[]
+                {
+                    new
+                    {
+                        name = assetName,
+                        browser_download_url = downloadUrl,
+                        size = r.Size,
+                        digest = "sha256:" + r.Sha256,
+                    }
+                }
+            });
+        }).RequireCors("api");
+    }
+
+    private static IResult ServeRelease(Release? r, ReleaseService releases, HttpContext ctx)
+    {
+        if (r == null) return Results.NotFound();
+        string path = releases.FilePath(r.FileName);
+        if (!File.Exists(path)) return Results.NotFound();
+        releases.IncrementDownloads(r.Id);
+        string displayName = ReleaseService.DisplayName(r.Product, r.Version);
+        ctx.Response.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment")
+        {
+            FileNameStar = displayName,
+        }.ToString();
+        return Results.File(path, "application/octet-stream", enableRangeProcessing: true);
     }
 
     /// <summary>Body of POST /api/v1/auth/pilot.</summary>

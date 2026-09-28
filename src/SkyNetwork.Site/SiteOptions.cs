@@ -74,4 +74,6 @@ public sealed class SiteOptions
     /// in the current network feed and recent flight activity. Default: main Russian and nearby airports.
     /// </summary>
     public string AirportWarmup { get; set; } = "UUEE,UUDD,UUWW,UUBW,ULLI,URSS,URKK,UWWW,USSS,UNNT,UHWW,UMMS";
+    /// <summary>Directory for uploaded program installers; empty means "releases" next to the database.</summary>
+    public string Releases { get; set; } = "";
 }

@@ -227,6 +227,25 @@ public sealed class Database
                 pax_mass_kg REAL NOT NULL DEFAULT 0, baggage_mass_kg REAL NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL DEFAULT 0);
             """);
+        // Program installers uploaded to the site and served from /download/.
+        c.Execute("""
+            CREATE TABLE IF NOT EXISTS releases (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product TEXT NOT NULL,
+                version TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                size INTEGER NOT NULL,
+                sha256 TEXT NOT NULL,
+                notes TEXT NOT NULL DEFAULT '',
+                notes_en TEXT NOT NULL DEFAULT '',
+                published INTEGER NOT NULL DEFAULT 0,
+                downloads INTEGER NOT NULL DEFAULT 0,
+                uploaded_by INTEGER NOT NULL,
+                created_at INTEGER NOT NULL,
+                UNIQUE (product, version));
+            CREATE INDEX IF NOT EXISTS ix_releases_product ON releases (product, published, created_at);
+            """);
+
     }
 
     /// <summary>Adds the column if it is missing; true when it was added.</summary>

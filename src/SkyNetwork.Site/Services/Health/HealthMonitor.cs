@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using System.Net;
-using System.Net.Http.Json;
 using System.Net.Security;
 using System.Reflection;
-using System.Text.Json.Serialization;
 using Dapper;
 using Microsoft.Extensions.Options;
 using SkyNetwork.Site.Data;
@@ -18,6 +16,7 @@ namespace SkyNetwork.Site.Services.Health;
 /// </summary>
 public sealed class HealthMonitor(
     IOptions<SiteOptions> options, IOptions<MailOptions> mail, Database db, NetworkFeed feed, Mailer mailer, RecentLog recent,
+    SkyNetwork.Site.Data.ReleaseService releases,
     IHttpClientFactory http, ILogger<HealthMonitor> log) : BackgroundService
 {
     public const string Network = "network", Website = "website", Server = "server", Programs = "programs";
@@ -119,13 +118,12 @@ public sealed class HealthMonitor(
                 Guarded("web", Server, "Web server", () => ServiceCheck("web", Server, "Web server", o.WebService, null, tcp: true, ct)),
                 Guarded("logs", Server, "Service logs", () => Slow("logs", TimeSpan.FromMinutes(2), () => JournalCheck(ct))),
             };
-            // "owner/repo=Name" or just "owner/repo".
-            foreach (var entry in o.ReleaseRepos.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            // Check each program's local releases table.
+            foreach (var (product, name) in new[] { ("skypilot", "SkyPilot"), ("network-atc", "Network-ATC") })
             {
-                int eq = entry.IndexOf('=');
-                string repo = eq > 0 ? entry[..eq].Trim() : entry;
-                string id = "release:" + repo, name = eq > 0 ? entry[(eq + 1)..].Trim() : repo[(repo.IndexOf('/') + 1)..];
-                checks.Add(Guarded(id, Programs, name, () => Slow(id, TimeSpan.FromMinutes(60), () => ReleaseCheck(id, repo, name, ct))));
+                string checkId = "release:" + product;
+                string p = product, n = name, cid = checkId;
+                checks.Add(Guarded(checkId, Programs, n, () => Task.FromResult(LocalReleaseCheck(cid, p, n))));
             }
             var results = await Task.WhenAll(checks);
             _results = results;
@@ -547,46 +545,16 @@ public sealed class HealthMonitor(
 
     // ---- programs -------------------------------------------------------------------------------
 
-    private async Task<HealthCheck> ReleaseCheck(string id, string repo, string name, CancellationToken ct)
+    private HealthCheck LocalReleaseCheck(string id, string product, string name)
     {
         var title = new Say("{0}: latest release", name);
-        ReleaseDto? release;
-        try
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/latest");
-            request.Headers.Accept.ParseAdd("application/vnd.github+json");
-            using var r = await http.CreateClient("health").SendAsync(request, ct);
-            if (r.StatusCode == HttpStatusCode.NotFound)
-                return new HealthCheck(id, Programs, title, HealthLevel.Warning, new Say("No releases"),
-                    new Say("{0} has no published release: nobody can download it and installed copies cannot update.", name));
-            if (!r.IsSuccessStatusCode)
-                return new HealthCheck(id, Programs, title, HealthLevel.Unknown, new Say("GitHub answers {0}", (int)r.StatusCode));
-            release = await r.Content.ReadFromJsonAsync<ReleaseDto>(ct);
-        }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException && !ct.IsCancellationRequested)
-        {
-            return new HealthCheck(id, Programs, title, HealthLevel.Unknown, new Say("GitHub does not answer"));
-        }
-        if (release?.Tag == null) return new HealthCheck(id, Programs, title, HealthLevel.Unknown, new Say("GitHub does not answer"));
-        var value = new Say("{0} · {1}", release.Tag, release.Published ?? DateTime.UtcNow);
-        bool hasSetup = release.Assets?.Any(a => a.Name?.Contains("-Setup-", StringComparison.OrdinalIgnoreCase) == true &&
-                                                 a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) == true;
-        if (!hasSetup)
-            return new HealthCheck(id, Programs, title, HealthLevel.Warning, value,
-                new Say("The latest release {0} has no installer (.exe): installed copies cannot update themselves.", release.Tag),
-                new Say("Publish releases with a version tag (for example 0.2.0) from main: GitHub then builds and attaches the installer by itself."));
-        return new HealthCheck(id, Programs, title, HealthLevel.Ok, value);
-    }
-
-    private sealed class ReleaseDto
-    {
-        [JsonPropertyName("tag_name")] public string? Tag { get; set; }
-        [JsonPropertyName("published_at")] public DateTime? Published { get; set; }
-        [JsonPropertyName("assets")] public List<AssetDto>? Assets { get; set; }
-    }
-
-    private sealed class AssetDto
-    {
-        [JsonPropertyName("name")] public string? Name { get; set; }
+        var r = releases.LatestPublished(product);
+        if (r == null)
+            return new HealthCheck(id, Programs, title, HealthLevel.Warning, new Say("No published release"),
+                new Say("{0} has no published release: nobody can download it and installed copies cannot update.", name));
+        bool fileExists = File.Exists(releases.FilePath(r.FileName));
+        if (!fileExists)
+            return new HealthCheck(id, Programs, title, HealthLevel.Error, new Say("{0} · file missing", r.Version));
+        return new HealthCheck(id, Programs, title, HealthLevel.Ok, new Say("{0} · {1}", r.Version, r.Created));
     }
 }

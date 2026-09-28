@@ -35,6 +35,8 @@ public enum Perm
     DeleteAccounts = 1 << 19,
     /// <summary>Edit aircraft performance profiles (administrators only).</summary>
     ManageAircraft = 1 << 20,
+    /// <summary>Upload, publish and delete program installers (administrators only).</summary>
+    Releases = 1 << 21,
     All = ~0,
 }
 

@@ -1203,5 +1203,28 @@ public static class Ru
         ["Need a route? Try the planner."] = "Нужен маршрут? Воспользуйтесь планировщиком.",
         ["Invalid airport code — use 3 or 4 letter ICAO codes."] = "Неверный код аэропорта — используйте 3 или 4 буквы ИКАО.",
         ["Invalid aircraft type code."] = "Неверный код типа ВС.",
+        // releases
+        ["Version"] = "Версия",
+        ["Program"] = "Программа",
+        ["Size"] = "Размер",
+        ["Downloads"] = "Скачиваний",
+        ["Draft"] = "Черновик",
+        ["Published"] = "Опубликовано",
+        ["Unpublish"] = "Снять",
+        ["Releases"] = "Релизы",
+        ["Program installers served from the site. The newest published version is offered for download and returned by the API."] = "Установщики программ, которые раздаёт сайт. Последняя опубликованная версия доступна для скачивания и возвращается API.",
+        ["Upload a new version"] = "Загрузить новую версию",
+        ["Release notes (Russian)"] = "Описание версии (по-русски)",
+        ["Release notes (English)"] = "Описание версии (по-английски)",
+        ["Installer (.exe, up to 300 MB)"] = "Установщик (.exe, до 300 МБ)",
+        ["No releases yet."] = "Релизов пока нет.",
+        ["Delete this release?"] = "Удалить этот релиз?",
+        ["Uploaded"] = "Загружено",
+        ["Unpublished"] = "Снято с публикации",
+        ["Deleted"] = "Удалено",
+        ["Download coming soon."] = "Скачивание появится скоро.",
+        // releases health check
+        ["No published release"] = "Нет опубликованного релиза",
+        ["{0} · file missing"] = "{0} · файл не найден",
     };
 }

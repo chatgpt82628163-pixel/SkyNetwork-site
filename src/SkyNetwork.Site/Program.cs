@@ -79,6 +79,7 @@ builder.Services.AddSingleton<RunwayData>();
 builder.Services.AddSingleton<AirportLayoutWarmup>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AirportLayoutWarmup>());
 builder.Services.AddSingleton<UploadStore>();
+builder.Services.AddSingleton<ReleaseService>();
 builder.Services.AddSingleton<SkyNetwork.Site.Security.SignupGuard>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<NetworkFeed>());
 builder.Services.AddHttpClient("health", c =>

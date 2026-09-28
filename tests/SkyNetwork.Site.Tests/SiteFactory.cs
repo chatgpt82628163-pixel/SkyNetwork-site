@@ -12,19 +12,20 @@ public sealed class SiteFactory(Dictionary<string, string>? settings = null) : W
 {
     public string DatabasePath { get; } = Path.Combine(Path.GetTempPath(), $"skynet-site-{Guid.NewGuid():N}.db");
     public string UploadsPath { get; } = Path.Combine(Path.GetTempPath(), $"skynet-uploads-{Guid.NewGuid():N}");
+    public string ReleasesPath { get; } = Path.Combine(Path.GetTempPath(), $"skynet-releases-{Guid.NewGuid():N}");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Site:Database", DatabasePath);
         builder.UseSetting("Site:Uploads", UploadsPath);
+        builder.UseSetting("Site:Releases", ReleasesPath);
         builder.UseSetting("Site:DataFeedUrl", "");
         builder.UseSetting("Site:AuthAttemptsPerMinute", "10000");
         // Tests fill in the registration form at once and register many members; SignupProtectionTests switch these on.
         builder.UseSetting("Site:SignupMinSeconds", "0");
         builder.UseSetting("Site:RegistrationsPerDayPerAddress", "10000");
-        // The status page checks only when a test asks (StatusPageTests), and never GitHub.
+        // The status page checks only when a test asks (StatusPageTests).
         builder.UseSetting("Site:HealthCheckSeconds", "0");
-        builder.UseSetting("Site:ReleaseRepos", "");
         if (settings != null)
             foreach (var (key, value) in settings) builder.UseSetting(key, value);
         builder.UseEnvironment(Environment.GetEnvironmentVariable("SITE_TEST_ENV") ?? "Production");
@@ -51,6 +52,7 @@ public sealed class SiteFactory(Dictionary<string, string>? settings = null) : W
         foreach (var f in new[] { DatabasePath, DatabasePath + "-wal", DatabasePath + "-shm" })
             try { File.Delete(f); } catch (IOException) { }
         try { Directory.Delete(UploadsPath, true); } catch (IOException) { }
+        try { Directory.Delete(ReleasesPath, true); } catch (IOException) { }
     }
 }
 

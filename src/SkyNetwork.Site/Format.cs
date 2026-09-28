@@ -38,4 +38,11 @@ public static class Format
 
     public static string InputDate(DateTime t) => t.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     public static string InputTime(DateTime t) => t.ToString("HH:mm", CultureInfo.InvariantCulture);
+
+    public static string Bytes(long bytes)
+    {
+        if (bytes >= 1024 * 1024) return (bytes / (1024.0 * 1024)).ToString("0.0", CultureInfo.InvariantCulture) + " MB";
+        if (bytes >= 1024) return (bytes / 1024.0).ToString("0", CultureInfo.InvariantCulture) + " KB";
+        return bytes + " B";
+    }
 }
