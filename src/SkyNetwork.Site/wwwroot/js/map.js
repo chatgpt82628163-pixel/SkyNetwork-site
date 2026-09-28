@@ -513,7 +513,8 @@
     const arrs = data.pilots.filter(p => p.flightPlan?.destination?.toUpperCase() === code).length;
     const foot = deps + arrs > 0
       ? `<div class="pop-foot"><span>${t('Departures')} ${deps}</span><span>${t('Arrivals')} ${arrs}</span></div>` : '';
-    return list.map(popRow).join('') + foot;
+    const cf = chartfoxLink(code);
+    return list.map(popRow).join('') + foot + (cf ? `<div class="pop-chartfox">${cf}</div>` : '');
   }
 
   function popAtc(cs) {
@@ -900,6 +901,9 @@
   const aptLink = (code, info) => code
     ? `<a href="#" data-select="airport|${esc(code)}"><b>${esc(code)}</b></a><span>${esc(info?.[2] ?? '')}</span>`
     : '<b>—</b>';
+  const chartfoxLink = code => /^[A-Z0-9]{4}$/.test(code)
+    ? `<a class="chartfox-link" href="https://chartfox.org/${esc(code)}" target="_blank" rel="noopener">${t('Charts')}</a>`
+    : '';
   const section = (key, title, body) => `<details class="mc-sec" data-sec="${key}"${sections[key] ? ' open' : ''}><summary>${title}<i></i></summary>${body}</details>`;
 
   // The card slides in from its edge (from below on a phone) and goes back the same way. Every animation starts
@@ -1023,7 +1027,7 @@
 
     const flight = fp ? `
       <div class="mc-flight">
-        <div class="mc-route"><div class="apt">${aptLink(fp.departure, airport(fp.departure))}</div><div class="arrow">→</div><div class="apt">${aptLink(fp.destination, airport(fp.destination))}</div></div>
+        <div class="mc-route"><div class="apt">${aptLink(fp.departure, airport(fp.departure))}${chartfoxLink(fp.departure)}</div><div class="arrow">→</div><div class="apt">${aptLink(fp.destination, airport(fp.destination))}${chartfoxLink(fp.destination)}</div></div>
         <div class="mc-progress"><i style="width:${pct}%"></i><b style="left:${pct}%"></b></div>
         <div class="mc-times">
           <span><small>${off ? t('Departed') : t('Planned')}</small>${depTime}</span>
@@ -1057,7 +1061,7 @@
         ${cell(t('Cruise TAS'), fp.cruiseSpeed ? fp.cruiseSpeed + ' kt' + (extras?.mach ? ` · M${esc(extras.mach)}` : '') : '—')}
         ${cell(t('Cruise altitude'), esc(fp.cruiseAltitude || '—'))}
         ${cell(t('Aircraft registration'), esc(extras?.reg || '—'))}
-        ${cell(t('Alternate'), fp.alternate ? `<a href="#" data-select="airport|${esc(fp.alternate)}">${esc(fp.alternate)}</a>` : '—')}
+        ${cell(t('Alternate'), fp.alternate ? `<a href="#" data-select="airport|${esc(fp.alternate)}">${esc(fp.alternate)}</a>${chartfoxLink(fp.alternate)}` : '—')}
         ${cell(t('Route distance'), extras?.dist ? extras.dist + ' nm' : left != null && flown != null ? Math.round(flown + left) + ' nm' : '—')}
         ${cell(t('Departure'), hhmm(fp.departureTime))}
         ${cell(t('En route'), hm(fp.enrouteMinutes))}
@@ -1140,6 +1144,7 @@
       ? `<div class="mc-chips">${list.map(p => `<a class="badge" href="#" data-select="pilot|${esc(p.callsign)}">${esc(p.callsign)}</a>`).join('')}</div>`
       : `<div class="muted small">${t('none')}</div>`;
     const metar = metarOf(code);
+    const cfLink = chartfoxLink(code);
     return head(esc(code), esc(info?.[2] ?? '')) + `
       <div class="mc-body">
         <div class="mc-block"><div class="eyebrow">METAR</div>${metar ? `<div class="mc-text">${esc(metar)}</div>`
@@ -1148,6 +1153,7 @@
         ${atc.filter(c => c.facility === 'ATIS').map(atisText).join('')}
         <div class="mc-block"><div class="eyebrow">${t('Departures')} · ${deps.length}</div>${flights(deps)}</div>
         <div class="mc-block"><div class="eyebrow">${t('Arrivals')} · ${arrs.length}</div>${flights(arrs)}</div>
+        ${cfLink ? `<div class="mc-block mc-chartfox">${cfLink}</div>` : ''}
       </div>`;
   }
 

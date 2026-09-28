@@ -34,9 +34,18 @@
         <label>@L["Speed, knots"]<input name="Plan.CruiseSpeed" value="@(p.CruiseSpeed == 0 ? "" : p.CruiseSpeed)" inputmode="numeric" required></label>
       </div>
       <div class="row">
-        <label>@L["Departure"]<input name="Plan.Departure" value="@p.Departure" class="mono" required maxlength="4" placeholder="UUEE"></label>
-        <label>@L["Destination"]<input name="Plan.Destination" value="@p.Destination" class="mono" required maxlength="4" placeholder="ULLI"></label>
-        <label>@L["Alternate"]<input name="Plan.Alternate" value="@p.Alternate" class="mono" maxlength="4"></label>
+        <label>@L["Departure"]<input name="Plan.Departure" value="@p.Departure" class="mono" required maxlength="4" placeholder="UUEE">
+          @if (System.Text.RegularExpressions.Regex.IsMatch(p.Departure, @"^[A-Z0-9]{4}$")) {
+            <span class="hint"><a href="https://chartfox.org/@p.Departure" target="_blank" rel="noopener">@L["Charts"]</a></span>
+          }</label>
+        <label>@L["Destination"]<input name="Plan.Destination" value="@p.Destination" class="mono" required maxlength="4" placeholder="ULLI">
+          @if (System.Text.RegularExpressions.Regex.IsMatch(p.Destination, @"^[A-Z0-9]{4}$")) {
+            <span class="hint"><a href="https://chartfox.org/@p.Destination" target="_blank" rel="noopener">@L["Charts"]</a></span>
+          }</label>
+        <label>@L["Alternate"]<input name="Plan.Alternate" value="@p.Alternate" class="mono" maxlength="4">
+          @if (p.Alternate.Length == 4 && System.Text.RegularExpressions.Regex.IsMatch(p.Alternate, @"^[A-Z0-9]{4}$")) {
+            <span class="hint"><a href="https://chartfox.org/@p.Alternate" target="_blank" rel="noopener">@L["Charts"]</a></span>
+          }</label>
         <label>@L["Departure, UTC"]<input name="Plan.DepartureTime" value="@p.DepartureTime" class="mono" required maxlength="4" placeholder="1200"></label>
       </div>
       <div class="row">

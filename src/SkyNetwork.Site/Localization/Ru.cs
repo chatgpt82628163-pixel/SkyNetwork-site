@@ -1035,5 +1035,7 @@ public static class Ru
         ["Previous"] = "Назад",
         ["Next"] = "Далее",
         ["No sessions found."] = "Записей не найдено.",
+        // chartfox
+        ["Charts"] = "Карты",
     };
 }
