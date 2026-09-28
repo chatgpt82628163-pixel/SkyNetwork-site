@@ -30,7 +30,7 @@
 
 /* side columns */
 .ps-left, .ps-right { position: absolute; z-index: 900; top: calc(52px + var(--ps-gap) * 2); bottom: var(--ps-gap); width: var(--ps-side);
-  display: flex; flex-direction: column; gap: var(--ps-gap); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; pointer-events: none; }
+  display: flex; flex-direction: column; gap: var(--ps-gap); overflow-y: auto; overscroll-behavior: contain; pointer-events: none; }
 .ps-left { left: var(--ps-gap); }
 .ps-right { right: var(--ps-gap); }
 .ps-left > *, .ps-right > * { pointer-events: auto; flex: none; }
@@ -215,3 +215,9 @@
   .ps-ofp { display: block; margin: 0; color: #000; font: 10px/1.35 var(--mono); white-space: pre; }
 }
 .ps.ps-dense .ps-fix:not(.ps-prof) span { display: none; }
+/* No scrollbars anywhere in the studio: panels, tables and the route still scroll by wheel, touch and keyboard. */
+.ps, .ps * { scrollbar-width: none; -ms-overflow-style: none; }
+.ps::-webkit-scrollbar, .ps *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+html:has(#ps) { scrollbar-width: none; }
+html:has(#ps)::-webkit-scrollbar { display: none; }
+@media (min-width: 1100px) { html:has(#ps), html:has(#ps) body { overflow: hidden; } }
