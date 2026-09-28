@@ -221,3 +221,7 @@
 html:has(#ps) { scrollbar-width: none; }
 html:has(#ps)::-webkit-scrollbar { display: none; }
 @media (min-width: 1100px) { html:has(#ps), html:has(#ps) body { overflow: hidden; } }
+/* Load fields: the inputs on one line whatever the label; "auto" when the planner chose the number. */
+.ps-load-form label { display: flex; flex-direction: column; justify-content: flex-end; }
+.ps-load-form .ps-lbl { line-height: 1.25; }
+.ps-load-form label.is-auto .ps-lbl::after { content: " · " attr(data-auto); color: var(--accent-ink); text-transform: none; letter-spacing: 0; }

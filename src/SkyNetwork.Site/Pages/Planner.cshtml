@@ -72,13 +72,13 @@
         <div class="ps-seg" id="ps-units"><button type="button" data-v="kg">kg</button><button type="button" data-v="lb">lb</button></div>
       </div>
       <div id="ps-ac-name" class="ps-ac-name muted"></div>
-      <form id="ps-load-form" class="ps-load-form" autocomplete="off">
-        <label>@L["Cost index"]<input id="ps-ci" type="number" min="0" max="999" placeholder="30"></label>
-        <label>@L["Level FL"]<input id="ps-fl" type="number" min="10" max="510" step="10" placeholder="@L["auto"]"></label>
-        <label>@L["Passengers"]<input id="ps-pax" type="number" min="0" max="900" placeholder="@L["auto"]"></label>
-        <label>@L["Bags per pax"], <span class="ps-unit">kg</span><input id="ps-bag" type="number" min="0" max="100" placeholder="15"></label>
-        <label>@L["Cargo"], <span class="ps-unit">kg</span><input id="ps-cargo" type="number" min="0" max="200000" placeholder="0"></label>
-        <label>@L["Extra fuel"], <span class="ps-unit">kg</span><input id="ps-extra" type="number" min="0" max="100000" placeholder="0"></label>
+      <form id="ps-load-form" class="ps-load-form" autocomplete="off" data-auto-text="@L["auto"]">
+        <label><span class="ps-lbl">@L["Cost index"]</span><input id="ps-ci" type="number" min="0" max="999"></label>
+        <label><span class="ps-lbl">@L["Level FL"]</span><input id="ps-fl" type="number" min="10" max="510" step="10"></label>
+        <label><span class="ps-lbl">@L["Passengers"]</span><input id="ps-pax" type="number" min="0" max="900"></label>
+        <label><span class="ps-lbl">@L["Bags per pax"], <span class="ps-unit">kg</span></span><input id="ps-bag" type="number" min="0" max="220"></label>
+        <label><span class="ps-lbl">@L["Cargo"], <span class="ps-unit">kg</span></span><input id="ps-cargo" type="number" min="0" max="450000"></label>
+        <label><span class="ps-lbl">@L["Extra fuel"], <span class="ps-unit">kg</span></span><input id="ps-extra" type="number" min="0" max="220000"></label>
       </form>
       <div id="ps-fuel" class="ps-fuel"></div>
       <div id="ps-weights"></div>

@@ -133,8 +133,8 @@
     for (const f of fields) {
       const el = $('#ps-' + f);
       let v = (el?.value || '').trim();
-      if (!v) continue;
-      if (f === 'time') { v = new Date(v).toISOString(); }
+      if (!v || el.dataset.auto === '1') continue;
+      if (f === 'time') v = v.length === 16 ? v + ':00Z' : v + 'Z';
       if (['dep', 'dest', 'alt', 'type', 'callsign'].includes(f)) v = v.toUpperCase();
       if (['bag', 'cargo', 'extra'].includes(f) && unit === 'lb') v = String(Math.round(Number(v) / 2.20462));
       q.set(f, v);
@@ -176,9 +176,33 @@
     // Last: the panels have their final size, the route is fitted into what is left of the map.
     drawMap(p);
     // The fields show what the plan was made with (the level and pax when left automatic).
-    $('#ps-fl').placeholder = 'FL' + p.cruiseLevel;
-    $('#ps-pax').placeholder = p.weights.pax;
+    fillLoad(p);
+    // The off-block time the plan used (UTC), kept automatic until the pilot sets one.
+    const te = $('#ps-time');
+    if (te.value === '' || te.dataset.auto === '1') { te.value = p.offBlock.substring(0, 16); te.dataset.auto = '1'; }
     if (!$('#ps-alt').value) $('#ps-alt').placeholder = p.alternate || '';
+  }
+
+  // The load fields show the numbers the plan was made with. Those the pilot has not typed are marked "auto" and
+  // left to the planner next time (a new type gets its own seats, a heavier load may get a lower level).
+  const massFields = ['bag', 'cargo', 'extra'];
+  function fillLoad(p) {
+    const k = unit === 'lb' ? 2.20462 : 1;
+    const used = {
+      ci: p.costIndex, fl: p.cruiseLevel, pax: p.weights.pax,
+      bag: Math.round((p.weights.pax ? p.weights.baggageKg / p.weights.pax : 15) * k),
+      cargo: Math.round(p.weights.cargoKg * k), extra: Math.round(p.fuel.extraKg * k),
+    };
+    for (const [f, v] of Object.entries(used)) {
+      const el = $('#ps-' + f);
+      if (el.value === '' || el.dataset.auto === '1') { el.value = v; el.dataset.auto = '1'; }
+      markAuto(el);
+    }
+  }
+  function markAuto(el) {
+    const lbl = el.closest('label').querySelector('.ps-lbl');
+    lbl.dataset.auto = $('#ps-load-form').dataset.autoText || 'auto';
+    el.closest('label').classList.toggle('is-auto', el.dataset.auto === '1');
   }
 
   function renderTop(p) {
@@ -392,7 +416,7 @@
     $('#ps-navlog').innerHTML = `<table class="ps-table">
       <thead><tr><th>${t('Fix')}</th><th>${t('Airway')}</th><th>${t('Crs')}</th><th>${t('Leg')}</th><th>${t('Dist')}</th><th>${t('To go')}</th>
         <th>${t('Level')}</th><th>${t('Wind')}</th><th>°C</th><th>ISA</th><th>TAS</th><th>GS</th>
-        <th>${t('Leg time')}</th><th>${t('Time')}</th><th>ETA</th><th>${t('Leg fuel')}</th><th>${t('Used')}</th><th>${t('Remaining')}</th></tr></thead>
+        <th>${t('Leg time')}</th><th>${t('Total time')}</th><th>ETA</th><th>${t('Leg fuel')}</th><th>${t('Used')}</th><th>${t('Fuel left')}</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
 
@@ -579,10 +603,15 @@ ${wps}
   $('#ps-new-btn').addEventListener('click', () => { $('.ps-flight').open = true; $('#ps-dep').focus(); });
 
   // ── form ─────────────────────────────────────────────────────────────────
+  $('#ps-time').addEventListener('input', e => { e.target.dataset.auto = e.target.value === '' ? '1' : ''; });
   $('#ps-form').addEventListener('submit', e => { e.preventDefault(); variant = 0; depRwy = ''; arrRwy = ''; plan(); });
   // Load changes are applied at once (a short pause after typing).
   let timer = 0;
-  $('#ps-load-form').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => current && plan(), 700); });
+  $('#ps-load-form').addEventListener('input', e => {
+    // Typed by the pilot: no longer automatic (emptied: automatic again).
+    if (e.target.matches('input')) { e.target.dataset.auto = e.target.value === '' ? '1' : ''; markAuto(e.target); }
+    clearTimeout(timer); timer = setTimeout(() => current && plan(), 700);
+  });
   $('#ps-load-form').addEventListener('submit', e => { e.preventDefault(); plan(); });
   for (const id of ['ps-dep', 'ps-dest']) $('#' + id).addEventListener('change', () => { variant = 0; depRwy = ''; arrRwy = ''; });
 
@@ -593,7 +622,7 @@ ${wps}
     const f = aliases[k.toLowerCase()] || k.toLowerCase();
     const el = $('#ps-' + f);
     if (!el || !v) continue;
-    if (f === 'time') { const d = new Date(v); if (!isNaN(d)) el.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().substring(0, 16); }
+    if (f === 'time') { const d = new Date(v); if (!isNaN(d)) el.value = d.toISOString().substring(0, 16); }
     else el.value = v;
   }
   variant = Number(params.get('variant')) || 0;

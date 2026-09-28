@@ -14,7 +14,7 @@ public static class PlannerTexts
         "No runway data for {0} yet: OpenStreetMap is being asked, try again in a minute.", "{0} m, true heading {1}°", "Runways",
         "Block fuel", "Trip", "Reserves", "Air time", "Tanks: {0} of {1}", "Empty aircraft", "Payload", "Zero fuel",
         "Basic", "Variant {0}", "Copied", "Link copied",
-        "Fix", "Airway", "Crs", "Leg", "Dist", "To go", "Level", "Wind", "Leg time", "Time", "Leg fuel", "Used", "Remaining",
+        "Fix", "Airway", "Crs", "Leg", "Dist", "To go", "Level", "Wind", "Leg time", "Time", "Total time", "Leg fuel", "Used", "Fuel left",
         "Item", "Taxi", "15 min", "Contingency", "5 % of trip", "5 min holding (more than 5 %)", "none", "Final reserve",
         "30 min holding at 1500 ft", "Minimum take-off fuel", "Extra", "at the captain's discretion", "taxi included",
         "Landing fuel", "at {0}",
