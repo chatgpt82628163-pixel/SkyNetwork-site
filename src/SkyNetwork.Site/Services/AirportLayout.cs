@@ -63,7 +63,7 @@ public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<Site
         _inFlight.GetOrAdd(icao, key =>
         {
             var t = FetchAsync(icao, path);
-            t.ContinueWith(_ => _inFlight.TryRemove(icao, out _), TaskContinuationOptions.ExecuteSynchronously);
+            t.ContinueWith(completed => _inFlight.TryRemove(icao, out _), TaskContinuationOptions.ExecuteSynchronously);
             return t;
         });
     }
