@@ -1,0 +1,120 @@
+/* Logbook page */
+
+.lb-back { margin-bottom: 12px; }
+.lb-back a { color: var(--accent); text-decoration: none; font-size: 14px; }
+.lb-back a:hover { text-decoration: underline; }
+
+.lb-stats { margin-bottom: 24px; }
+
+/* Top stats summary cards */
+.lb-tops {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.lb-top-block {
+  flex: 1 1 160px;
+  min-width: 140px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.lb-top-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 10px;
+}
+.lb-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--line);
+}
+.lb-top-row:last-child { border-bottom: 0; }
+.lb-top-count {
+  color: var(--slate);
+  font-size: 12.5px;
+  flex-shrink: 0;
+}
+
+/* Tabs + year filter toolbar */
+.lb-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.lb-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 3px;
+}
+.lb-tab {
+  padding: 6px 16px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--slate);
+  text-decoration: none;
+  transition: background .12s, color .12s;
+}
+.lb-tab:hover { color: var(--ink); }
+.lb-tab.active {
+  background: var(--card-bg);
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+
+.lb-year-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.lb-year {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--slate);
+  text-decoration: none;
+  background: var(--card-bg);
+  transition: border-color .12s, color .12s;
+}
+.lb-year:hover { border-color: var(--accent); color: var(--accent-ink); }
+.lb-year.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft-line);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+/* Pagination */
+.lb-pager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Responsive: collapse stats to 2 columns on small screens */
+@media (max-width: 600px) {
+  .lb-stats { grid-template-columns: repeat(2, 1fr); }
+  .lb-stats .stat:nth-child(2) { border-right: 0; }
+  .lb-stats .stat:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+  .lb-tops { flex-direction: column; }
+  .lb-top-block { min-width: 0; }
+}

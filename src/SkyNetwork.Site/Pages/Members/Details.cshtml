@@ -37,7 +37,10 @@
     <div class="stat"><b>@Model.Hours.PilotSessions</b><span>@L["flights"]</span></div>
     <div class="stat"><b>@Model.Hours.AtcSessions</b><span>@L["controlling sessions"]</span></div>
   </div>
-  <h2 style="font-size:20px">@L["Recent connections"]</h2>
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px">
+    <h2 style="font-size:20px;margin:0">@L["Recent connections"]</h2>
+    <a href="/members/@m.Cid/logbook" class="muted" style="font-size:13px">@L["Full logbook"] →</a>
+  </div>
   @if (Model.Sessions.Count == 0)
   {
     <div class="empty">@L["No connections yet."]</div>

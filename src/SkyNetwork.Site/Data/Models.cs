@@ -219,3 +219,9 @@ public sealed class AuditEntry
     public long CreatedAt { get; set; }
     public DateTime Created => Time.Utc(CreatedAt);
 }
+
+/// <summary>Top-N entries for the logbook summary: aircraft types, routes, and controller positions.</summary>
+public sealed record LogbookTopStats(
+    IReadOnlyList<(string Key, int Count)> Aircraft,
+    IReadOnlyList<(string Key, int Count)> Routes,
+    IReadOnlyList<(string Key, int Count)> Positions);

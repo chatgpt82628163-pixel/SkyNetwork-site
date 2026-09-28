@@ -1,0 +1,143 @@
+@page "/members/{cid:long}/logbook"
+@model SkyNetwork.Site.Pages.Members.LogbookModel
+@using SkyNetwork.Site.Pages.Members
+@{
+    var m = Model.Member;
+    ViewData["Title"] = m.Name + " — " + L["Logbook"];
+
+    string TabUrl(string t) =>
+        $"/members/{m.Cid}/logbook?tab={t}" + (Model.Year.HasValue ? $"&year={Model.Year}" : "");
+    string YearUrl(int? y) =>
+        $"/members/{m.Cid}/logbook?tab={Model.Tab}" + (y.HasValue ? $"&year={y}" : "");
+    string PageUrl(int pg) =>
+        $"/members/{m.Cid}/logbook?tab={Model.Tab}" +
+        (Model.Year.HasValue ? $"&year={Model.Year}" : "") +
+        (pg > 0 ? $"&p={pg}" : "");
+
+}
+@section Head {
+  <link rel="stylesheet" href="~/css/logbook.css" asp-append-version="true">
+}
+<div class="wrap page">
+  <div class="lb-back"><a href="/members/@m.Cid">← @m.Name</a></div>
+  <h1 style="font-size:26px;margin:0 0 20px">@L["Logbook"]</h1>
+
+  <div class="stats lb-stats">
+    <div class="stat"><b>@Format.Hours(Model.Hours.PilotHours)</b><span>@L["flying"]</span></div>
+    <div class="stat"><b>@Format.Hours(Model.Hours.AtcHours)</b><span>@L["on position"]</span></div>
+    <div class="stat"><b>@Model.Hours.PilotSessions</b><span>@L["flights"]</span></div>
+    <div class="stat"><b>@Model.Hours.AtcSessions</b><span>@L["controlling sessions"]</span></div>
+  </div>
+
+  @if (Model.Top.Aircraft.Count > 0 || Model.Top.Positions.Count > 0)
+  {
+    <div class="lb-tops">
+      @if (Model.Top.Aircraft.Count > 0)
+      {
+        <div class="lb-top-block">
+          <div class="lb-top-label">@L["Most flown aircraft"]</div>
+          @foreach (var (key, count) in Model.Top.Aircraft)
+          {
+            <div class="lb-top-row"><span class="mono">@key</span><span class="lb-top-count">@count</span></div>
+          }
+        </div>
+      }
+      @if (Model.Top.Routes.Count > 0)
+      {
+        <div class="lb-top-block">
+          <div class="lb-top-label">@L["Most flown routes"]</div>
+          @foreach (var (key, count) in Model.Top.Routes)
+          {
+            <div class="lb-top-row"><span class="mono">@key</span><span class="lb-top-count">@count</span></div>
+          }
+        </div>
+      }
+      @if (Model.Top.Positions.Count > 0)
+      {
+        <div class="lb-top-block">
+          <div class="lb-top-label">@L["Most controlled positions"]</div>
+          @foreach (var (key, count) in Model.Top.Positions)
+          {
+            <div class="lb-top-row"><span class="mono">@key</span><span class="lb-top-count">@count</span></div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <div class="lb-toolbar">
+    <div class="lb-tabs" role="tablist">
+      <a class="lb-tab@(Model.Tab == "all" ? " active" : "")" href="@TabUrl("all")">@L["All"]</a>
+      <a class="lb-tab@(Model.Tab == "pilot" ? " active" : "")" href="@TabUrl("pilot")">@L["Pilot"]</a>
+      <a class="lb-tab@(Model.Tab == "atc" ? " active" : "")" href="@TabUrl("atc")">@L["Controller"]</a>
+    </div>
+    @if (Model.Years.Count > 0)
+    {
+      <div class="lb-year-filter">
+        <a class="lb-year@(Model.Year == null ? " active" : "")" href="@YearUrl(null)">@L["All years"]</a>
+        @foreach (var y in Model.Years)
+        {
+          <a class="lb-year@(Model.Year == y ? " active" : "")" href="@YearUrl(y)">@y</a>
+        }
+      </div>
+    }
+  </div>
+
+  @if (Model.Sessions.Count == 0)
+  {
+    <div class="empty">@L["No sessions found."]</div>
+  }
+  else
+  {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>@L["Date"]</th>
+            <th>@L["Callsign"]</th>
+            @if (Model.Tab != "atc") { <th>@L["Aircraft"]</th><th>@L["Route"]</th> }
+            @if (Model.Tab != "pilot") { <th>@L["Position"]</th> }
+            <th>@L["Duration"]</th>
+          </tr>
+        </thead>
+        <tbody>
+        @foreach (var s in Model.Sessions)
+        {
+          var isPilot = s.Kind == "pilot";
+          var (aircraft, dep, dest) = isPilot ? LogbookModel.ParsePilotDetails(s.Details) : ("", "", "");
+          var (freq, rating) = !isPilot ? LogbookModel.ParseAtcDetails(s.Details) : ("", "");
+          <tr>
+            <td class="muted">@Format.Utc(s.Start)</td>
+            <td class="mono">@s.Callsign</td>
+            @if (Model.Tab != "atc")
+            {
+              <td class="mono">@(aircraft.Length > 0 ? aircraft : "—")</td>
+              <td class="mono">@(dep.Length > 0 && dest.Length > 0 ? dep + " → " + dest : dep.Length > 0 ? dep : "—")</td>
+            }
+            @if (Model.Tab != "pilot")
+            {
+              <td class="mono">@(freq.Length > 0 ? freq : "—")</td>
+            }
+            <td>@Format.Duration(s.Duration)@(s.EndedAt == null ? " · " + L["on the air"] : "")</td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+      <div class="lb-pager">
+        @if (Model.CurrentPage > 0)
+        {
+          <a class="btn btn-small" href="@PageUrl(Model.CurrentPage - 1)">← @L["Previous"]</a>
+        }
+        <span class="muted">@L["Page"] @(Model.CurrentPage + 1) / @Model.TotalPages</span>
+        @if (Model.CurrentPage < Model.TotalPages - 1)
+        {
+          <a class="btn btn-small" href="@PageUrl(Model.CurrentPage + 1)">@L["Next"] →</a>
+        }
+      </div>
+    }
+  }
+</div>
