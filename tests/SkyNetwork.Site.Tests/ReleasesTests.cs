@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using SkyNetwork.Site.Data;
+using Database = SkyNetwork.Site.Data.Database;
 
 namespace SkyNetwork.Site.Tests;
 
@@ -155,7 +156,7 @@ public class ReleasesTests
         {
             Product = "skypilot", Version = "1.0.0", FileName = "skypilot-1.0.0.exe",
             Size = fakeExe.Length, Sha256 = "aabbcc",
-            UploadedBy = 1, CreatedAt = Data.Database.Now(),
+            UploadedBy = 1, CreatedAt = Database.Now(),
         };
         service.Insert(r);
         var inserted = service.ForProduct("skypilot")[0];
@@ -204,7 +205,7 @@ public class ReleasesTests
             Product = "skypilot", Version = "0.3.0", FileName = "skypilot-0.3.0.exe",
             Size = fakeExe.Length, Sha256 = "deadbeef01",
             Notes = "release notes", NotesEn = "release notes en",
-            UploadedBy = 1, CreatedAt = Data.Database.Now(),
+            UploadedBy = 1, CreatedAt = Database.Now(),
         };
         service.Insert(rel);
         var inserted = service.ForProduct("skypilot")[0];
@@ -258,7 +259,7 @@ public class ReleasesTests
         {
             Product = "skypilot", Version = "2.0.0", FileName = "skypilot-2.0.0.exe",
             Size = FakeExe().Length, Sha256 = "aabb",
-            UploadedBy = 1, CreatedAt = Data.Database.Now(),
+            UploadedBy = 1, CreatedAt = Database.Now(),
         };
         service.Insert(rel);
         var inserted = service.ForProduct("skypilot")[0];

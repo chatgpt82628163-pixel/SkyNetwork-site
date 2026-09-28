@@ -95,7 +95,7 @@ public sealed class ReleasesModel(CurrentUser me, ReleaseService releases) : Sta
             Notes = notes,
             NotesEn = notesEn,
             UploadedBy = Me.Cid,
-            CreatedAt = Data.Database.Now(),
+            CreatedAt = Database.Now(),
         };
 
         string? error = releases.Insert(r);
