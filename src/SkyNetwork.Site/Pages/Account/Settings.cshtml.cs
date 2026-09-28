@@ -87,8 +87,11 @@ public sealed class SettingsModel(CurrentUser me, MemberService members, Connect
         {
             members.ChangePassword(me.Cid, NewPassword);
             // Re-issue this session's cookie with the new stamp so the current session stays signed in.
+            // Preserve the original IsPersistent flag so a "remember me" login does not lose its 14-day cookie.
+            var existing = await HttpContext.AuthenticateAsync();
+            var wasPersistent = existing.Succeeded && (existing.Properties?.IsPersistent ?? false);
             var fresh = members.Find(me.Cid)!;
-            await HttpContext.SignInMemberAsync(fresh, remember: false);
+            await HttpContext.SignInMemberAsync(fresh, remember: wasPersistent);
             Message = "Password changed. Use the new password to connect to the network too";
         }
         return Page();

@@ -131,9 +131,8 @@ if (app.Configuration.GetValue<bool>("Site:BehindProxy"))
 }
 if (!app.Environment.IsDevelopment()) app.UseExceptionHandler("/error/500");
 app.UseStatusCodePagesWithReExecute("/error/{0}");
-app.UseStaticFiles();
 
-// Security headers on every response.
+// Security headers on every response — must be before UseStaticFiles so static assets get headers too.
 app.Use(async (ctx, next) =>
 {
     ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
@@ -142,6 +141,7 @@ app.Use(async (ctx, next) =>
     ctx.Response.Headers["Content-Security-Policy"] = "frame-ancestors 'self'";
     await next();
 });
+app.UseStaticFiles();
 
 app.UseRouting();
 app.UseRateLimiter();
