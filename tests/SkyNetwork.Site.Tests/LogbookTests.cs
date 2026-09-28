@@ -59,12 +59,13 @@ public class LogbookTests
     {
         using var site = new SiteFactory();
         long cid = site.Member();
-        AddSession(site, cid, "pilot", "TEST1");
-        AddSession(site, cid, "atc", "UUEE_APP");
+        AddSession(site, cid, "pilot", "FLT001");
+        AddSession(site, cid, "atc", "CTRL002");
 
         var html = await site.Browser().HtmlAsync($"/members/{cid}/logbook?tab=pilot");
-        Assert.Contains("TEST1", html);
-        Assert.DoesNotContain("UUEE_APP", html);
+        // The pilot callsign must appear in the table; the ATC callsign must not appear in a <td> (it may still appear in the top-positions summary).
+        Assert.Contains("<td class=\"mono\">FLT001</td>", html);
+        Assert.DoesNotContain("<td class=\"mono\">CTRL002</td>", html);
     }
 
     [Fact]
@@ -72,12 +73,12 @@ public class LogbookTests
     {
         using var site = new SiteFactory();
         long cid = site.Member();
-        AddSession(site, cid, "pilot", "TEST1");
-        AddSession(site, cid, "atc", "UUEE_APP");
+        AddSession(site, cid, "pilot", "FLT001");
+        AddSession(site, cid, "atc", "CTRL002");
 
         var html = await site.Browser().HtmlAsync($"/members/{cid}/logbook?tab=atc");
-        Assert.DoesNotContain("TEST1", html);
-        Assert.Contains("UUEE_APP", html);
+        Assert.DoesNotContain("<td class=\"mono\">FLT001</td>", html);
+        Assert.Contains("<td class=\"mono\">CTRL002</td>", html);
     }
 
     [Fact]
