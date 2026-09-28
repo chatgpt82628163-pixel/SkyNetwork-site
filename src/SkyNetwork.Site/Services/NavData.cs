@@ -432,4 +432,257 @@ public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogge
         double a = Math.Pow(Math.Sin(dLat / 2), 2) + Math.Cos(lat1 * Rad) * Math.Cos(lat2 * Rad) * Math.Pow(Math.Sin(dLon / 2), 2);
         return 2 * 3440.065 * Math.Asin(Math.Sqrt(Math.Min(1, a)));
     }
+
+    // ---- route finder ----
+
+    /// <summary>Result of <see cref="FindRoute"/>: an airway route or a DCT segment.</summary>
+    public sealed record FindRouteResult(
+        string Route,
+        List<RoutePoint> Points,
+        double DistanceNm,
+        bool IsDirect);
+
+    /// <summary>
+    /// Finds the shortest airway route between two airports using A* over the global airway graph.
+    /// Falls back to a direct (DCT) route if no airway path is found.
+    /// The route string is in ICAO format (e.g. "GUBAG N869 RATIN DCT LEPTA").
+    /// </summary>
+    public FindRouteResult FindRoute(string departure, string destination)
+    {
+        departure = departure.ToUpperInvariant();
+        destination = destination.ToUpperInvariant();
+        var b = Bundled;
+
+        (double Lat, double Lon)? depPos = b.Airports.TryGetValue(departure, out var dp) ? dp : null;
+        (double Lat, double Lon)? destPos = b.Airports.TryGetValue(destination, out var ap) ? ap : null;
+
+        if (depPos == null || destPos == null)
+        {
+            // Unknown airport(s): just DCT
+            double dist = depPos != null && destPos != null
+                ? Distance(depPos.Value.Lat, depPos.Value.Lon, destPos.Value.Lat, destPos.Value.Lon) : 0;
+            var pts = BuildDirectPoints(departure, destination, depPos, destPos);
+            return new FindRouteResult("DCT", pts, dist, true);
+        }
+
+        double totalDist = Distance(depPos.Value.Lat, depPos.Value.Lon, destPos.Value.Lat, destPos.Value.Lon);
+
+        lock (_lock)
+        {
+            EnsureLearned();
+            var graph = BuildOrGetGlobalGraph(b);
+            var result = AStarRoute(departure, depPos.Value, destination, destPos.Value, graph, totalDist);
+            if (result != null) return result;
+        }
+
+        // No airway route found: DCT
+        var directPts = BuildDirectPoints(departure, destination, depPos, destPos);
+        return new FindRouteResult("DCT", directPts, totalDist, true);
+    }
+
+    // Global graph for the route finder. Built lazily; invalidated when learned data grows.
+    private GlobalGraph? _globalGraph;
+    private int _globalGraphLearnedCount;
+
+    private sealed class GlobalGraph
+    {
+        public sealed class Node(string ident, double lat, double lon)
+        {
+            public readonly string Ident = ident;
+            public readonly double Lat = lat, Lon = lon;
+            // (neighbour, geographic distance NM, airway name)
+            public readonly List<(Node Nb, double Dist, string Airway)> Links = [];
+        }
+
+        // Key: rounded position → node (same ident different position = different node)
+        public readonly Dictionary<long, Node> ByPos = new();
+        // ident → all nodes with that name
+        public readonly Dictionary<string, List<Node>> ByIdent = new(StringComparer.Ordinal);
+
+        private static long Key(double lat, double lon) =>
+            ((long)(Math.Round(lat, 2) * 100 + 9000) << 20) | (long)(Math.Round(lon, 2) * 100 + 18000);
+
+        public Node GetOrAdd(string ident, double lat, double lon)
+        {
+            long k = Key(lat, lon);
+            if (!ByPos.TryGetValue(k, out var n))
+            {
+                n = new Node(ident, lat, lon);
+                ByPos[k] = n;
+                if (!ByIdent.TryGetValue(ident, out var list)) ByIdent[ident] = list = [];
+                list.Add(n);
+            }
+            return n;
+        }
+
+        public void AddSegment(string airway, Segment s)
+        {
+            var a = GetOrAdd(s.A, s.ALat, s.ALon);
+            var b = GetOrAdd(s.B, s.BLat, s.BLon);
+            if (a == b) return;
+            double dist = Distance(a.Lat, a.Lon, b.Lat, b.Lon);
+            if (!a.Links.Any(x => x.Nb == b)) a.Links.Add((b, dist, airway));
+            if (!b.Links.Any(x => x.Nb == a)) b.Links.Add((a, dist, airway));
+        }
+    }
+
+    private GlobalGraph BuildOrGetGlobalGraph(BundledData b)
+    {
+        int total = _learnedAirways.Sum(kv => kv.Value.Count);
+        if (_globalGraph != null && _globalGraphLearnedCount == total) return _globalGraph;
+
+        var g = new GlobalGraph();
+        foreach (var (name, segs) in b.Airways)
+            foreach (var s in segs) g.AddSegment(name, s);
+        foreach (var (name, segs) in _learnedAirways)
+            foreach (var s in segs) g.AddSegment(name, s);
+
+        _globalGraph = g;
+        _globalGraphLearnedCount = total;
+        return g;
+    }
+
+    private const double NearAirportNm = 40;
+    private const int AStarMaxNodes = 200_000;
+
+    private FindRouteResult? AStarRoute(
+        string depIdent, (double Lat, double Lon) depPos,
+        string destIdent, (double Lat, double Lon) destPos,
+        GlobalGraph graph, double totalDistNm)
+    {
+        // Collect entry fixes near departure and exit fixes near destination
+        var entryNodes = NearbyNodes(graph, depPos.Lat, depPos.Lon, NearAirportNm);
+        var exitNodes = NearbyNodes(graph, destPos.Lat, destPos.Lon, NearAirportNm);
+        if (entryNodes.Count == 0 || exitNodes.Count == 0) return null;
+
+        var exitSet = new HashSet<GlobalGraph.Node>(exitNodes);
+
+        // A* — cost: NM flown; heuristic: great-circle to destination
+        var dist = new Dictionary<GlobalGraph.Node, double>();
+        var prev = new Dictionary<GlobalGraph.Node, (GlobalGraph.Node? From, double EntryDist, string Airway)>();
+        var pq = new PriorityQueue<GlobalGraph.Node, double>();
+
+        foreach (var n in entryNodes)
+        {
+            double g = Distance(depPos.Lat, depPos.Lon, n.Lat, n.Lon);
+            double h = Distance(n.Lat, n.Lon, destPos.Lat, destPos.Lon);
+            dist[n] = g;
+            prev[n] = (null, g, "");
+            pq.Enqueue(n, g + h);
+        }
+
+        GlobalGraph.Node? goal = null;
+        int explored = 0;
+
+        while (pq.Count > 0 && explored < AStarMaxNodes)
+        {
+            var cur = pq.Dequeue();
+            if (exitSet.Contains(cur)) { goal = cur; break; }
+            double curCost = dist.TryGetValue(cur, out var c) ? c : double.MaxValue;
+            explored++;
+
+            foreach (var (nb, segDist, airway) in cur.Links)
+            {
+                double newCost = curCost + segDist;
+                if (dist.TryGetValue(nb, out var oldCost) && oldCost <= newCost) continue;
+                dist[nb] = newCost;
+                prev[nb] = (cur, newCost, airway);
+                double h = Distance(nb.Lat, nb.Lon, destPos.Lat, destPos.Lon);
+                pq.Enqueue(nb, newCost + h);
+            }
+        }
+
+        if (goal == null) return null;
+
+        // Reconstruct path
+        var path = new List<(GlobalGraph.Node Node, string Airway)>();
+        for (var at = goal; at != null;)
+        {
+            var (fromNode, _, airway) = prev[at];
+            path.Add((at, airway));
+            at = fromNode;
+        }
+        path.Reverse();
+
+        // Build points list and compute total distance
+        double totalNm = Distance(depPos.Lat, depPos.Lon, path[0].Node.Lat, path[0].Node.Lon);
+        for (int i = 1; i < path.Count; i++)
+            totalNm += Distance(path[i - 1].Node.Lat, path[i - 1].Node.Lon, path[i].Node.Lat, path[i].Node.Lon);
+        totalNm += Distance(path[^1].Node.Lat, path[^1].Node.Lon, destPos.Lat, destPos.Lon);
+
+        var points = new List<RoutePoint>();
+        points.Add(new RoutePoint(depIdent, depPos.Lat, depPos.Lon, "", 0));
+        foreach (var (node, airway) in path)
+            points.Add(new RoutePoint(node.Ident, node.Lat, node.Lon, airway, 0));
+        points.Add(new RoutePoint(destIdent, destPos.Lat, destPos.Lon, "", 0));
+
+        string route = BuildRouteString(path, depIdent, destIdent);
+        return new FindRouteResult(route, points, totalNm, false);
+    }
+
+    /// <summary>
+    /// Build an ICAO route string from a reconstructed A* path.
+    /// path[i].Airway = the airway used on the edge from path[i-1] to path[i] ("" = direct).
+    /// Produces: ENTRY_FIX AIRWAY EXIT_FIX ... with DCT between non-airway legs.
+    /// </summary>
+    private static string BuildRouteString(List<(GlobalGraph.Node Node, string Airway)> path, string dep, string dest)
+    {
+        if (path.Count == 0) return "DCT";
+        var parts = new List<string>();
+        string? lastEmitted = null;
+
+        int i = 0;
+        while (i < path.Count)
+        {
+            string airway = path[i].Airway;
+
+            if (airway.Length == 0)
+            {
+                // Direct leg to path[i]: emit it if not DEP or DEST
+                string fix = path[i].Node.Ident;
+                if (fix != dep && fix != dest) { parts.Add(fix); lastEmitted = fix; }
+                i++;
+                continue;
+            }
+
+            // Find the full run of this airway
+            int j = i;
+            while (j < path.Count && path[j].Airway == airway) j++;
+            // path[i-1] is the entry fix into the airway (or DEP if i==0)
+            string entryFix = i > 0 ? path[i - 1].Node.Ident : dep;
+            string exitFix = path[j - 1].Node.Ident;
+
+            // Emit entry fix if not already the last thing we emitted
+            if (entryFix != dep && entryFix != dest && entryFix != lastEmitted)
+            {
+                if (lastEmitted != null) parts.Add("DCT");
+                parts.Add(entryFix);
+            }
+            parts.Add(airway);
+            if (exitFix != dep && exitFix != dest) { parts.Add(exitFix); lastEmitted = exitFix; }
+            i = j;
+        }
+        return parts.Count > 0 ? string.Join(" ", parts) : "DCT";
+    }
+
+    private static List<GlobalGraph.Node> NearbyNodes(GlobalGraph g, double lat, double lon, double maxNm)
+    {
+        var result = new List<GlobalGraph.Node>();
+        foreach (var node in g.ByPos.Values)
+            if (Distance(lat, lon, node.Lat, node.Lon) <= maxNm)
+                result.Add(node);
+        // Limit to closest 200 to bound memory in dense areas
+        if (result.Count > 200)
+            result = [.. result.OrderBy(n => Distance(lat, lon, n.Lat, n.Lon)).Take(200)];
+        return result;
+    }
+
+    private static List<RoutePoint> BuildDirectPoints(string dep, string dest,
+        (double Lat, double Lon)? depPos, (double Lat, double Lon)? destPos)
+    {
+        var pts = new List<RoutePoint>();
+        if (depPos is { } d) pts.Add(new RoutePoint(dep, d.Lat, d.Lon, "", 0));
+        if (destPos is { } a) pts.Add(new RoutePoint(dest, a.Lat, a.Lon, "", 0));
+        return pts;
+    }
 }

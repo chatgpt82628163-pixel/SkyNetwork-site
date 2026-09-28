@@ -22,13 +22,22 @@ public sealed partial class FlightPlanModel(CurrentUser me, FlightPlanService pl
     /// <summary>SimBrief username or Pilot ID, remembered after the first import.</summary>
     public string SimbriefUser { get; private set; } = "";
 
-    public void OnGet(string? callsign, int? saved)
+    public void OnGet(string? callsign, int? saved,
+        string? dep, string? dest, string? type, string? route, string? level, string? alt, int? speed)
     {
         Saved = saved == 1;
         SimbriefUser = Request.Cookies[SimbriefCookie] ?? plans.SimbriefUser(me.Cid);
         // Start from the last plan: most flights are re-filed with small changes.
         Plan = plans.Latest(me.Cid) ?? new FlightPlan { Remarks = "/V/" };
         if (!string.IsNullOrWhiteSpace(callsign)) Plan.Callsign = callsign.Trim().ToUpperInvariant();
+        // Prefill from the planner (/planner passes dep, dest, type, route, level, alt, speed).
+        if (!string.IsNullOrWhiteSpace(dep)) Plan.Departure = dep.Trim().ToUpperInvariant()[..Math.Min(dep.Trim().Length, 4)];
+        if (!string.IsNullOrWhiteSpace(dest)) Plan.Destination = dest.Trim().ToUpperInvariant()[..Math.Min(dest.Trim().Length, 4)];
+        if (!string.IsNullOrWhiteSpace(type)) Plan.Aircraft = type.Trim().ToUpperInvariant()[..Math.Min(type.Trim().Length, 8)];
+        if (!string.IsNullOrWhiteSpace(route)) Plan.Route = route.Trim()[..Math.Min(route.Trim().Length, 1000)];
+        if (!string.IsNullOrWhiteSpace(level)) Plan.CruiseAltitude = level.Trim().ToUpperInvariant()[..Math.Min(level.Trim().Length, 6)];
+        if (!string.IsNullOrWhiteSpace(alt)) Plan.Alternate = alt.Trim().ToUpperInvariant()[..Math.Min(alt.Trim().Length, 4)];
+        if (speed is > 0 and <= 999) Plan.CruiseSpeed = speed.Value;
         ShowDurations();
     }
 
