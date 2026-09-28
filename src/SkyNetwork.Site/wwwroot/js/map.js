@@ -327,7 +327,7 @@
       layouts.set(code, 'loading');
       fetch(`/api/v1/airports/${code}/layout`).then(r => { if (!r.ok) throw r; return r.json(); })
         .then(d => { layouts.set(code, d); drawLayouts(); })
-        .catch(() => setTimeout(() => { layouts.delete(code); drawLayouts(); }, 90000));   // retry in 90 s
+        .catch(() => setTimeout(() => { layouts.delete(code); drawLayouts(); }, 90000));   // retry in 90 s (server backoff is 10 min, so the next attempt may still return nothing)
     }
     drawLayouts();
   }

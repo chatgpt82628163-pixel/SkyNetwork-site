@@ -47,9 +47,13 @@ public sealed partial class AirportLayoutWarmup(
             if (ct.IsCancellationRequested) break;
             if (layout.IsCacheFresh(icao)) { skipped++; continue; }
             log.LogDebug("Airport layout warmup: fetching {Icao}", icao);
-            await layout.GetAsync(icao, ct);
+            var data = await layout.GetAsync(icao, ct);
             fetched++;
-            try { await Task.Delay(PauseBetween, ct); } catch (OperationCanceledException) { return; }
+            // Skip the inter-fetch pause when GetAsync returned null without making HTTP requests
+            // (backoff hit). Applying the pause only after real fetches avoids inflating warmup
+            // duration when many airports have recent backoff entries.
+            if (data != null)
+                try { await Task.Delay(PauseBetween, ct); } catch (OperationCanceledException) { return; }
         }
         log.LogInformation("Airport layout warmup done: {Fetched} fetched, {Skipped} skipped (fresh cache)", fetched, skipped);
     }

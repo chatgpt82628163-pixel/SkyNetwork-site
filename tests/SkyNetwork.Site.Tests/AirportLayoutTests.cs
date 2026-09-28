@@ -103,7 +103,8 @@ public class AirportLayoutTests
             // Must return stale data immediately, not null.
             Assert.NotNull(result);
             Assert.Equal(staleJson, result);
-            // Background refresh was triggered.
+            // Background refresh runs in a fire-and-forget task; give it time to reach the HTTP handler.
+            await Task.Delay(100);
             Assert.True(httpCalled);
         }
         finally { Directory.Delete(cache, true); }
