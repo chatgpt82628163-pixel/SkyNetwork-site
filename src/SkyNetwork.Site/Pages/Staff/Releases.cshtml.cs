@@ -51,17 +51,18 @@ public sealed class ReleasesModel(CurrentUser me, ReleaseService releases) : Sta
             await using var temp = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 65536, true);
             using var hashStream = new CryptoStream(temp, sha, CryptoStreamMode.Write);
             byte[] header = new byte[2];
-            bool headerRead = false;
+            int headerBytes = 0;
             await using var stream = installer.OpenReadStream();
             int n;
             byte[] buf = new byte[65536];
             size = 0;
             while ((n = await stream.ReadAsync(buf)) > 0)
             {
-                if (!headerRead)
+                if (headerBytes < 2 && n > 0)
                 {
-                    if (size == 0 && n >= 2) { header[0] = buf[0]; header[1] = buf[1]; }
-                    headerRead = true;
+                    int take = Math.Min(2 - headerBytes, n);
+                    buf.AsSpan(0, take).CopyTo(header.AsSpan(headerBytes));
+                    headerBytes += take;
                 }
                 await hashStream.WriteAsync(buf.AsMemory(0, n));
                 size += n;

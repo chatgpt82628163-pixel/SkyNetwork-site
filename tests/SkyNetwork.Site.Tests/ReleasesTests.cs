@@ -116,12 +116,22 @@ public class ReleasesTests
         var r = await browser.GetAsync("/staff/releases");
         Assert.Equal(HttpStatusCode.NotFound, r.StatusCode);
 
+        // Unauthenticated POST upload is also refused
+        var form = UploadForm("skypilot", "0.1.0", FakeExe());
+        var rPost = await browser.PostAsync("/staff/releases?handler=Upload", form);
+        Assert.True(rPost.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden);
+
         // Logged-in staff without Releases permission also cannot access the page
         var browser2 = site.Browser();
         long supCid = site.Member("Supervisor User", Ratings.SUP);
         await browser2.LoginAsync(supCid);
         var r2 = await browser2.GetAsync("/staff/releases");
         Assert.Equal(HttpStatusCode.NotFound, r2.StatusCode);
+
+        // Supervisor POST upload is also refused
+        var form2 = UploadForm("skypilot", "0.1.0", FakeExe());
+        var rPost2 = await browser2.PostAsync("/staff/releases?handler=Upload", form2);
+        Assert.True(rPost2.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -226,7 +236,7 @@ public class ReleasesTests
         Assert.False(json.GetProperty("draft").GetBoolean());
         Assert.False(json.GetProperty("prerelease").GetBoolean());
         Assert.True(json.TryGetProperty("published_at", out _));
-        Assert.Equal("release notes", json.GetProperty("body").GetString());
+        Assert.Equal("release notes en", json.GetProperty("body").GetString());
 
         var assets = json.GetProperty("assets");
         Assert.Equal(1, assets.GetArrayLength());
@@ -236,6 +246,41 @@ public class ReleasesTests
         Assert.Equal(fakeExe.Length, asset.GetProperty("size").GetInt64());
         Assert.StartsWith("sha256:", asset.GetProperty("digest").GetString());
         Assert.Equal("sha256:deadbeef01", asset.GetProperty("digest").GetString());
+    }
+
+    [Fact]
+    public async Task UploadRefusesDuplicateVersion()
+    {
+        using var site = new SiteFactory();
+        var browser = site.Browser();
+        await LoginAdminAsync(site, browser);
+
+        var html = await (await browser.GetAsync("/staff/releases")).Content.ReadAsStringAsync();
+        var token = System.Text.RegularExpressions.Regex.Match(html, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"");
+        var afToken = System.Net.WebUtility.HtmlDecode(token.Groups[1].Value);
+
+        // First upload
+        var form1 = UploadForm("skypilot", "0.1.0", FakeExe());
+        form1.Add(new StringContent(afToken), "__RequestVerificationToken");
+        var r1 = await browser.PostAsync("/staff/releases?handler=Upload", form1);
+        Assert.True(r1.IsSuccessStatusCode);
+
+        // Refresh token for second request
+        html = await (await browser.GetAsync("/staff/releases")).Content.ReadAsStringAsync();
+        token = System.Text.RegularExpressions.Regex.Match(html, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"");
+        afToken = System.Net.WebUtility.HtmlDecode(token.Groups[1].Value);
+
+        // Second upload of same version
+        var form2 = UploadForm("skypilot", "0.1.0", FakeExe());
+        form2.Add(new StringContent(afToken), "__RequestVerificationToken");
+        var r2 = await browser.PostAsync("/staff/releases?handler=Upload", form2);
+        var body2 = await r2.Content.ReadAsStringAsync();
+        Assert.True(r2.IsSuccessStatusCode);
+        Assert.Contains("already exists", body2);
+
+        // Only one record in the database
+        var service = site.Get<ReleaseService>();
+        Assert.Single(service.ForProduct("skypilot"));
     }
 
     [Fact]
