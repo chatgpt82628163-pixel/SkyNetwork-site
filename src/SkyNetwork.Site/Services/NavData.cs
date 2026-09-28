@@ -42,7 +42,15 @@ public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogge
     private sealed record BundledData(
         Dictionary<string, List<(double Lat, double Lon)>> Fixes,
         Dictionary<string, List<Segment>> Airways,
-        Dictionary<string, (double Lat, double Lon)> Airports);
+        Dictionary<string, (double Lat, double Lon)> Airports,
+        HashSet<string> Forbidden);
+
+    // "AWY|FROM|TO": a one-way airway segment may not be flown this way (Nav/airac/airways.tsv.gz, direction F/B).
+    private static string DirKey(string airway, string from, string to) => airway + "|" + from + "|" + to;
+
+    /// <summary>Position of an airport known to the bundled data (wwwroot/data/airports.json), or null.</summary>
+    public (double Lat, double Lon)? AirportPosition(string icao) =>
+        Bundled.Airports.TryGetValue(icao.ToUpperInvariant(), out var p) ? p : null;
 
     // The bundled files are read once per process, whichever site instance asks first (tests create several).
     private static readonly object BundledLock = new();
@@ -411,7 +419,25 @@ public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogge
             log.LogWarning("Nav data files: {Error}", e.Message);
         }
         log.LogInformation("Nav data: {Fixes} fixes, {Airways} airways, {Airports} airports", fixes.Count, airways.Count, airports.Count);
-        return new BundledData(fixes, airways, airports);
+        // One-way segments (AIRAC): F — only in sequence order, B — only against it.
+        var forbidden = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            bool header = true;
+            foreach (var line in Lines(Path.Combine(root, "Nav", "airac", "airways.tsv.gz")))
+            {
+                if (header) { header = false; continue; }
+                var f = line.Split('\t');
+                if (f.Length < 11) continue;
+                if (f[10] == "F") forbidden.Add(DirKey(f[0], f[6], f[2]));
+                else if (f[10] == "B") forbidden.Add(DirKey(f[0], f[2], f[6]));
+            }
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException)
+        {
+            log.LogWarning("Airway directions: {Error}", e.Message);
+        }
+        return new BundledData(fixes, airways, airports, forbidden);
     }
 
     private static IEnumerable<string> Lines(string gzipPath)
@@ -502,12 +528,12 @@ public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogge
         // ident → all nodes with that name
         public readonly Dictionary<string, List<Node>> ByIdent = new(StringComparer.Ordinal);
 
-        private static long Key(double lat, double lon) =>
+        public static long KeyOf(double lat, double lon) =>
             ((long)(Math.Round(lat, 2) * 100 + 9000) << 20) | (long)(Math.Round(lon, 2) * 100 + 18000);
 
         public Node GetOrAdd(string ident, double lat, double lon)
         {
-            long k = Key(lat, lon);
+            long k = KeyOf(lat, lon);
             if (!ByPos.TryGetValue(k, out var n))
             {
                 n = new Node(ident, lat, lon);
@@ -518,14 +544,14 @@ public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogge
             return n;
         }
 
-        public void AddSegment(string airway, Segment s)
+        public void AddSegment(string airway, Segment s, HashSet<string>? forbidden = null)
         {
             var a = GetOrAdd(s.A, s.ALat, s.ALon);
             var b = GetOrAdd(s.B, s.BLat, s.BLon);
             if (a == b) return;
             double dist = Distance(a.Lat, a.Lon, b.Lat, b.Lon);
-            if (!a.Links.Any(x => x.Nb == b)) a.Links.Add((b, dist, airway));
-            if (!b.Links.Any(x => x.Nb == a)) b.Links.Add((a, dist, airway));
+            if (forbidden?.Contains(DirKey(airway, s.A, s.B)) != true && !a.Links.Any(x => x.Nb == b)) a.Links.Add((b, dist, airway));
+            if (forbidden?.Contains(DirKey(airway, s.B, s.A)) != true && !b.Links.Any(x => x.Nb == a)) b.Links.Add((a, dist, airway));
         }
     }
 
@@ -536,7 +562,7 @@ public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogge
 
         var g = new GlobalGraph();
         foreach (var (name, segs) in b.Airways)
-            foreach (var s in segs) g.AddSegment(name, s);
+            foreach (var s in segs) g.AddSegment(name, s, b.Forbidden);
         foreach (var (name, segs) in _learnedAirways)
             foreach (var s in segs) g.AddSegment(name, s);
 
@@ -548,10 +574,57 @@ public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogge
     private const double NearAirportNm = 40;
     private const int AStarMaxNodes = 200_000;
 
+    /// <summary>
+    /// Up to <paramref name="count"/> different airway routes, shortest first: each next one is searched with the
+    /// segments of the previous ones made dearer, so it takes other airways where they are not much longer.
+    /// Routes that come out the same are dropped.
+    /// </summary>
+    public List<FindRouteResult> FindRoutes(string departure, string destination, int count = 3)
+    {
+        var first = FindRoute(departure, destination);
+        var result = new List<FindRouteResult> { first };
+        if (first.IsDirect || count <= 1) return result;
+        departure = departure.ToUpperInvariant();
+        destination = destination.ToUpperInvariant();
+        var b = Bundled;
+        var depPos = b.Airports[departure];
+        var destPos = b.Airports[destination];
+        double totalDist = Distance(depPos.Lat, depPos.Lon, destPos.Lat, destPos.Lon);
+        lock (_lock)
+        {
+            var graph = BuildOrGetGlobalGraph(b);
+            var avoid = new HashSet<(GlobalGraph.Node, GlobalGraph.Node)>();
+            void Mark(FindRouteResult r)
+            {
+                for (int i = 2; i < r.Points.Count - 1; i++)
+                {
+                    var a = graph.ByPos.GetValueOrDefault(GlobalGraph.KeyOf(r.Points[i - 1].Lat, r.Points[i - 1].Lon));
+                    var z = graph.ByPos.GetValueOrDefault(GlobalGraph.KeyOf(r.Points[i].Lat, r.Points[i].Lon));
+                    if (a != null && z != null) { avoid.Add((a, z)); avoid.Add((z, a)); }
+                }
+            }
+            Mark(first);
+            for (int k = 1; k < count * 2 && result.Count < count; k++)
+            {
+                var next = AStarRoute(departure, depPos, destination, destPos, graph, totalDist, avoid);
+                if (next == null) break;
+                Mark(next);
+                // Much longer than the shortest is not a real choice; the same string is not a new one.
+                if (next.DistanceNm > first.DistanceNm * 1.25) break;
+                if (result.All(r => r.Route != next.Route)) result.Add(next);
+            }
+        }
+        return result;
+    }
+
+    // Segments of routes already offered cost this much more when looking for another.
+    private const double AvoidFactor = 1.6;
+
     private FindRouteResult? AStarRoute(
         string depIdent, (double Lat, double Lon) depPos,
         string destIdent, (double Lat, double Lon) destPos,
-        GlobalGraph graph, double totalDistNm)
+        GlobalGraph graph, double totalDistNm,
+        HashSet<(GlobalGraph.Node, GlobalGraph.Node)>? avoid = null)
     {
         // Collect entry fixes near departure and exit fixes near destination
         var entryNodes = NearbyNodes(graph, depPos.Lat, depPos.Lon, NearAirportNm);
@@ -586,7 +659,7 @@ public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogge
 
             foreach (var (nb, segDist, airway) in cur.Links)
             {
-                double newCost = curCost + segDist;
+                double newCost = curCost + (avoid != null && avoid.Contains((cur, nb)) ? segDist * AvoidFactor : segDist);
                 if (dist.TryGetValue(nb, out var oldCost) && oldCost <= newCost) continue;
                 dist[nb] = newCost;
                 prev[nb] = (cur, newCost, airway);

@@ -28,6 +28,42 @@ public sealed class AircraftService
     {
         _profilesPath = Path.Combine(AppContext.BaseDirectory, "Aircraft", "profiles.json");
         _profiles = LoadProfiles(_profilesPath);
+        AddDerivedTypes(_profiles, Path.Combine(AppContext.BaseDirectory, "Aircraft", "types.json"));
+    }
+
+    /// <summary>
+    /// The other types (Aircraft/types.json): the masses, tanks, seats, ceiling and Mach of the type, the rest of the
+    /// performance from a similar OpenAP profile, fuel flow scaled by the take-off mass. Marked as mapped.
+    /// </summary>
+    private static void AddDerivedTypes(Dictionary<string, AircraftProfile> profiles, string path)
+    {
+        if (!File.Exists(path)) return;
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        foreach (var row in doc.RootElement.GetProperty("types").EnumerateArray())
+        {
+            string icao = row[0].GetString()!.ToUpperInvariant();
+            if (profiles.ContainsKey(icao) || !profiles.TryGetValue(row[2].GetString()!, out var b)) continue;
+            double mtow = row[5].GetDouble(), mach = row[11].GetDouble();
+            string category = row[3].GetString()!;
+            profiles[icao] = b with
+            {
+                Icao = icao,
+                Name = row[1].GetString()!,
+                Category = category,
+                Source = "OpenAP/mapped",
+                IsMapped = true,
+                MapNote = $"Performance of the {b.Icao} scaled to the masses of the type",
+                OewKg = row[4].GetDouble(), MtowKg = mtow, MlwKg = row[6].GetDouble(), MzfwKg = row[7].GetDouble(),
+                MzfwEstimated = false, MfcKg = row[8].GetDouble(), SeatsTypical = row[9].GetInt32(),
+                MaxCargoKg = Math.Max(0, row[7].GetDouble() - row[4].GetDouble()),
+                CeilingFt = row[10].GetInt32(),
+                CruiseMachTyp = mach, CruiseMachLo = mach - 0.03, CruiseMachHi = mach + 0.02,
+                ClimbMach = Math.Min(b.ClimbMach > 0 ? b.ClimbMach : mach, mach),
+                DescentMach = Math.Min(b.DescentMach > 0 ? b.DescentMach : mach, mach),
+                NomCruiseFfKgH = b.NomCruiseFfKgH * Math.Pow(mtow / Math.Max(b.MtowKg, 1), 0.85),
+                BaggageMassKg = category == "ga" ? 10 : 15,
+            };
+        }
     }
 
     public AircraftService(Database db) => _db = db;

@@ -125,6 +125,25 @@ public static class ApiEndpoints
             });
         });
 
+        // The full flight plan: route variants, runways by wind, profile, navigation log, ICAO fuel, weights, weather.
+        v1.MapGet("/planner/plan", async (string? dep, string? dest, string? type, string? alt, int? pax, double? cargo,
+            double? bag, int? ci, int? fl, double? extra, int? variant, DateTime? time, string? deprwy, string? arrrwy,
+            string? callsign, FlightPlanner planner, HttpContext ctx) =>
+        {
+            if (dep is not { Length: 4 } || dest is not { Length: 4 })
+                return Results.BadRequest(new { error = "dep and dest must be 4-letter ICAO codes", errorRu = "Укажите коды ИКАО вылета и назначения (4 буквы)" });
+            if (type is not { Length: >= 2 and <= 4 })
+                return Results.BadRequest(new { error = "type must be an ICAO aircraft type", errorRu = "Укажите тип ВС по ИКАО" });
+            if (alt is { Length: > 0 and not 4 })
+                return Results.BadRequest(new { error = "alt must be a 4-letter ICAO code", errorRu = "Запасной — код ИКАО из 4 букв" });
+            var q = new PlanRequest(dep, dest, type, alt, pax, cargo, bag, Math.Clamp(ci ?? 30, 0, 999),
+                fl is > 0 ? Math.Clamp(fl.Value, 10, 510) : null, Math.Clamp(extra ?? 0, 0, 100_000), time, variant ?? 0,
+                deprwy, arrrwy, callsign is { Length: <= 10 } ? callsign : null);
+            var (plan, error) = await planner.PlanAsync(q, ctx.RequestAborted);
+            if (plan == null) return Results.BadRequest(new { error = error?.En, errorRu = error?.Ru });
+            return Results.Ok(plan);
+        }).RequireRateLimiting("planner");
+
         v1.MapGet("/airports/{icao}/layout", async (string icao, AirportLayout layouts, HttpContext ctx) =>
         {
             string? json = await layouts.GetAsync(icao, ctx.RequestAborted);

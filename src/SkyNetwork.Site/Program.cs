@@ -68,6 +68,7 @@ builder.Services.AddHttpClient("aloft", c =>
     c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/chatgpt82628163-pixel/SkyNetwork-site)");
 });
 builder.Services.AddSingleton<WindsAloftService>();
+builder.Services.AddSingleton<FlightPlanner>();
 builder.Services.AddHttpClient("overpass", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(95);
@@ -129,6 +130,11 @@ builder.Services.AddRateLimiter(o =>
     o.AddPolicy("division-api", ctx => RateLimitPartition.GetFixedWindowLimiter(
         DivisionApi.KeyOf(ctx) ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "?",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = divisionLimit, Window = TimeSpan.FromMinutes(1) }));
+    // Flight planner: each plan asks the weather services, so a few per minute per address.
+    int plannerLimit = builder.Configuration.GetValue("Site:PlansPerMinute", 30);
+    o.AddPolicy("planner", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "?",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = plannerLimit, Window = TimeSpan.FromMinutes(1) }));
 });
 builder.Services.AddCors(o => o.AddPolicy("api", p => p.AllowAnyOrigin().AllowAnyHeader().WithMethods("GET")));
 

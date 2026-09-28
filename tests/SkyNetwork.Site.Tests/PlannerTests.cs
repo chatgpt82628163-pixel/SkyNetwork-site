@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using SkyNetwork.Site.Localization;
 using SkyNetwork.Site.Services;
 
 namespace SkyNetwork.Site.Tests;
@@ -177,15 +178,88 @@ public class PlannerTests
     }
 
     [Fact]
-    public async Task PlannerPage_WithParams_ShowsResult()
+    public async Task PlannerPage_IsTheStudio_WithEveryAircraftType()
     {
         using var site = new SiteFactory();
-        var html = await site.CreateClient().HtmlAsync("/planner?Departure=UUEE&Destination=ULLI&AircraftType=A320");
-        Assert.Contains("NM", html);
-        Assert.Contains("FL", html);
-        Assert.Contains("kg", html);
+        var html = await site.CreateClient().HtmlAsync("/planner?dep=UUEE&dest=ULLI&type=A320");
+        Assert.Contains("id=\"ps-map\"", html);
+        Assert.Contains("planner.js", html);
+        Assert.Contains("A320 — Airbus A320-200", html);
+        Assert.Contains("T154 — Tupolev Tu-154M", html);   // a type from Aircraft/types.json
         Assert.Contains("simbrief", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("chartfox", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void PlannerTexts_AllTranslated()
+    {
+        var missing = PlannerTexts.Keys.Where(k => !Ru.Texts.ContainsKey(k)).ToList();
+        Assert.True(missing.Count == 0, "Missing Russian planner texts: " + string.Join(", ", missing));
+    }
+
+    // ---- Flight planner engine ----
+
+    [Theory]
+    [InlineData(90, 350, true)]   // east: odd
+    [InlineData(90, 360, false)]
+    [InlineData(270, 360, true)]  // west: even
+    [InlineData(270, 370, false)]
+    [InlineData(10, 250, true)]
+    [InlineData(200, 240, true)]
+    [InlineData(90, 450, true)]   // above RVSM
+    public void SemicircularRule(double course, int fl, bool ok) => Assert.Equal(ok, FlightPlanner.Semicircular(course, fl));
+
+    [Fact]
+    public void AutoLevel_FollowsDirectionCeilingAndDistance()
+    {
+        Assert.Equal(390, FlightPlanner.AutoLevel(90, 2000, 410));   // long eastbound: FL390, FL410 is at the ceiling
+        Assert.Equal(400, FlightPlanner.AutoLevel(270, 2000, 412));  // long westbound
+        int shortHop = FlightPlanner.AutoLevel(90, 100, 410);
+        Assert.True(shortHop <= 140 && FlightPlanner.Semicircular(90, shortHop), $"FL{shortHop} for 100 NM");
+    }
+
+    [Fact]
+    public async Task PlanApi_GivesNavlogFuelAndWeights()
+    {
+        using var site = new SiteFactory();
+        var c = site.CreateClient();
+        var r = await c.GetAsync("/api/v1/planner/plan?dep=UUEE&dest=ULLI&type=A320&pax=150&cargo=1000&ci=30");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var p = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("UUEE", p.GetProperty("departure").GetString());
+        var log = p.GetProperty("navLog").EnumerateArray().ToList();
+        Assert.True(log.Count >= 4);
+        Assert.Equal("UUEE", log[0].GetProperty("ident").GetString());
+        Assert.Equal("ULLI", log[^1].GetProperty("ident").GetString());
+        Assert.Contains(log, x => x.GetProperty("kind").GetString() == "toc");
+        var fuel = p.GetProperty("fuel");
+        int trip = fuel.GetProperty("tripKg").GetInt32(), block = fuel.GetProperty("blockKg").GetInt32();
+        Assert.InRange(trip, 1200, 4000);   // ~330 NM on an A320
+        int items = fuel.GetProperty("taxiKg").GetInt32() + trip + fuel.GetProperty("contingencyKg").GetInt32()
+            + fuel.GetProperty("alternateKg").GetInt32() + fuel.GetProperty("finalReserveKg").GetInt32() + fuel.GetProperty("extraKg").GetInt32();
+        Assert.InRange(block - items, -3, 3);   // rounding of each item
+        var w = p.GetProperty("weights");
+        Assert.Equal(150, w.GetProperty("pax").GetInt32());
+        int tow = w.GetProperty("takeoffKg").GetInt32();
+        Assert.InRange(tow - (w.GetProperty("zeroFuelKg").GetInt32() + block - fuel.GetProperty("taxiKg").GetInt32()), -3, 3);
+        Assert.InRange(w.GetProperty("landingKg").GetInt32() - (tow - trip), -3, 3);
+        Assert.True(p.GetProperty("routes").GetArrayLength() >= 1);
+        Assert.True(p.GetProperty("cruiseLevel").GetInt32() % 10 == 0);
+    }
+
+    [Fact]
+    public async Task PlanApi_MappedTypeAndBadInput()
+    {
+        using var site = new SiteFactory();
+        var c = site.CreateClient();
+        var r = await c.GetAsync("/api/v1/planner/plan?dep=UUEE&dest=URSS&type=T154");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var p = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("T154", p.GetProperty("aircraftIcao").GetString());
+        Assert.Contains(p.GetProperty("warnings").EnumerateArray(), x => x.GetProperty("code").GetString() == "mapped");
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.GetAsync("/api/v1/planner/plan?dep=UUEE&dest=ULLI&type=ZZZZ")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.GetAsync("/api/v1/planner/plan?dep=XXXX&dest=ULLI&type=A320")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.GetAsync("/api/v1/planner/plan?dep=UUEE")).StatusCode);
     }
 
     // ---- Flight plan prefill ----

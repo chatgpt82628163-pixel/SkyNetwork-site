@@ -2,159 +2,141 @@
 @model PlannerModel
 @{
     ViewData["Title"] = L["Flight planner"];
-    bool hasResult = Model.Route != null && Model.Estimates != null;
-    var r = Model.Route;
-    var e = Model.Estimates;
-    string dep = Model.Departure;
-    string dest = Model.Destination;
-    string type = Model.AircraftType;
-    string alt = Model.Alternate;
-    // SimBrief link
-    string sbUrl = hasResult
-        ? $"https://dispatch.simbrief.com/options/custom?orig={Uri.EscapeDataString(dep)}&dest={Uri.EscapeDataString(dest)}&type={Uri.EscapeDataString(type)}&route={Uri.EscapeDataString(r!.Route)}"
-        : "";
-    // Fill flight plan link
-    string fpUrl = hasResult
-        ? $"/flightplan?dep={Uri.EscapeDataString(dep)}&dest={Uri.EscapeDataString(dest)}&type={Uri.EscapeDataString(type)}&route={Uri.EscapeDataString(r!.Route)}&level={Uri.EscapeDataString(e!.CruiseLevelStr)}&alt={Uri.EscapeDataString(alt)}&speed={e.CruiseSpeedKt}"
-        : "";
+    ViewData["HideFooter"] = true;
 }
 @section Head {
-  @if (hasResult && r!.Points.Count > 1)
-  {
-    <link rel="stylesheet" href="~/lib/leaflet/leaflet.css">
-  }
+  <link rel="stylesheet" href="~/lib/leaflet/leaflet.css">
+  <link rel="stylesheet" href="~/css/planner.css" asp-append-version="true">
 }
-<div class="wrap page">
-  <div>
-    <h1 style="font-size:30px">@L["Flight planner"]</h1>
-    <p class="muted">@L["Route, cruise level, time and fuel estimate for a flight — for simulator use only."]</p>
+<div class="ps" id="ps" data-text="@PlannerTexts.Json(L)">
+  <div id="ps-map" aria-label="@L["Route map"]"></div>
 
-    <form method="get" asp-page="/Planner" class="form wide" style="margin-bottom:24px">
-      <div class="row">
-        <label>@L["Departure"]<input name="Departure" value="@dep" class="mono" required maxlength="4" placeholder="UUEE" autocomplete="off"></label>
-        <label>@L["Destination"]<input name="Destination" value="@dest" class="mono" required maxlength="4" placeholder="ULLI" autocomplete="off"></label>
-        <label>@L["Aircraft type"]<input name="AircraftType" value="@type" class="mono" maxlength="8" placeholder="A320" autocomplete="off"></label>
-        <label>@L["Alternate"]<input name="Alternate" value="@alt" class="mono" maxlength="4" placeholder="@L["optional"]" autocomplete="off"></label>
-      </div>
-      <div><button class="btn btn-primary" type="submit">@L["Calculate"]</button></div>
-    </form>
+  <header class="ps-top ps-glass">
+    <div class="ps-brand">@L["Flight planner"]</div>
+    <div class="ps-top-main">
+      <b id="ps-top-route">@L["New plan"]</b>
+      <span id="ps-top-type" class="muted"></span>
+      <span id="ps-top-warn" class="ps-warn-chip" hidden>⚠ <b>0</b></span>
+      <span id="ps-top-stats" class="ps-top-stats"></span>
+    </div>
+    <div class="ps-top-actions">
+      <a id="ps-charts" class="btn btn-small" href="https://chartfox.org/" target="_blank" rel="noopener">@L["Charts"]</a>
+      <button type="button" id="ps-share" class="btn btn-small">@L["Share"]</button>
+      <button type="button" id="ps-new-btn" class="btn btn-small btn-primary">@L["New plan"]</button>
+    </div>
+  </header>
 
-    @if (Model.Error != null)
-    {
-      <div class="alert error">@Model.Error</div>
-    }
-
-    @if (hasResult)
-    {
-      <div class="card" style="margin-bottom:16px">
-        <div class="eyebrow">@dep → @dest · @L["Estimate, not for real-world use"]</div>
-        <div style="margin:12px 0 8px">
-          <span class="badge accent">@(r!.IsDirect ? "DCT" : L["Airway route"])</span>
-          <b style="margin-left:8px">@((int)Math.Round(r.DistanceNm)) NM</b>
-          <span class="muted" style="margin-left:8px">@e!.CruiseLevelStr · @e.CruiseSpeedKt kt · @Model.EteFormatted</span>
-        </div>
-
-        @* Route string with copy button *@
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-          <code id="route-str" style="word-break:break-all;background:var(--bg2);padding:6px 10px;border-radius:6px;flex:1;font-size:14px">@(r.Route)</code>
-          <button class="btn btn-small" type="button" onclick="navigator.clipboard.writeText(document.getElementById('route-str').textContent)" title="@L["Copy route"]">@L["Copy"]</button>
-        </div>
-
-        @* Fuel breakdown *@
-        <details style="margin-bottom:12px">
-          <summary style="cursor:pointer;font-weight:600">@L["Fuel estimate"]&thinsp;—&thinsp;@e.TotalKg kg @L["total"]</summary>
-          <table style="margin-top:8px;border-spacing:0 4px;width:100%">
-            <tr><td class="muted small">@L["Trip fuel"]</td><td style="text-align:right;font-variant-numeric:tabular-nums">@e.TripKg kg</td></tr>
-            <tr><td class="muted small">@L["Contingency (5%)"]</td><td style="text-align:right;font-variant-numeric:tabular-nums">@e.ContingencyKg kg</td></tr>
-            <tr><td class="muted small">@L["Final reserve (30 min)"]</td><td style="text-align:right;font-variant-numeric:tabular-nums">@e.FinalReserveKg kg</td></tr>
-            @if (e.AlternateKg > 0)
+  <div class="ps-left">
+    <details class="ps-panel ps-glass ps-flight" id="ps-new" open>
+      <summary><h3>@L["Flight"]</h3><span class="muted small">@L["departure, destination, aircraft"]</span></summary>
+      <form id="ps-form" class="ps-form" autocomplete="off">
+        <label>@L["Departure"]<input id="ps-dep" class="mono" maxlength="4" placeholder="UUEE" required></label>
+        <label>@L["Destination"]<input id="ps-dest" class="mono" maxlength="4" placeholder="ULLI" required></label>
+        <label>@L["Alternate"]<input id="ps-alt" class="mono" maxlength="4" placeholder="@L["auto"]"></label>
+        <label class="wide">@L["Aircraft type"]
+          <select id="ps-type" required>
+            @foreach (var t in Model.Types)
             {
-              <tr><td class="muted small">@L["Alternate"]</td><td style="text-align:right;font-variant-numeric:tabular-nums">@e.AlternateKg kg</td></tr>
+              <option value="@t.Icao" selected="@(t.Icao == "A320")">@t.Icao — @t.Name</option>
             }
-            <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">@L["Total"]</td><td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">@e.TotalKg kg</td></tr>
-          </table>
-        </details>
+          </select>
+        </label>
+        <label>@L["Callsign"]<input id="ps-callsign" class="mono" maxlength="10" placeholder="AFL1234"></label>
+        <label class="wide">@L["Off-block time"]<input id="ps-time" type="datetime-local"></label>
+        <button type="submit" class="btn btn-primary wide">@L["Calculate"]</button>
+        <p id="ps-error" class="alert error wide" hidden></p>
+      </form>
+    </details>
 
-        @* METAR section (loaded client-side) *@
-        <div id="metar-area" style="margin-bottom:12px">
-          <div class="muted small" id="metar-dep">@L["Loading METAR"]…</div>
-          @if (!string.IsNullOrEmpty(dest))
-          {
-            <div class="muted small" id="metar-dest" style="margin-top:4px">@L["Loading METAR"]…</div>
-          }
-        </div>
-
-        @* Chart links and actions *@
-        <div style="display:flex;flex-wrap:wrap;gap:8px">
-          <a class="btn btn-small" href="https://chartfox.org/@dep" target="_blank" rel="noopener">@dep @L["charts"]</a>
-          <a class="btn btn-small" href="https://chartfox.org/@dest" target="_blank" rel="noopener">@dest @L["charts"]</a>
-          @if (!string.IsNullOrEmpty(sbUrl))
-          {
-            <a class="btn btn-small" href="@sbUrl" target="_blank" rel="noopener">@L["Open in SimBrief"]</a>
-          }
-          @if (Me.IsSignedIn && !string.IsNullOrEmpty(fpUrl))
-          {
-            <a class="btn btn-small btn-primary" href="@fpUrl">@L["Fill flight plan"]</a>
-          }
-          else if (!Me.IsSignedIn)
-          {
-            <a class="btn btn-small" href="/login?r=/planner?Departure=@Uri.EscapeDataString(dep)%26Destination=@Uri.EscapeDataString(dest)%26AircraftType=@Uri.EscapeDataString(type)">@L["Sign in to file"]</a>
-          }
-        </div>
+    <section class="ps-panel ps-glass" id="ps-rwy">
+      <div class="ps-panel-head"><h3>@L["Runways"]</h3>
+        <div class="ps-seg" id="ps-rwy-tabs"><button type="button" data-tab="dep" class="on">@L["Departure"]</button><button type="button" data-tab="arr">@L["Destination"]</button></div>
       </div>
+      <div id="ps-rwy-head" class="ps-rwy-head"><span class="muted small">@L["Make a plan to see the runways and the wind."]</span></div>
+      <div id="ps-rwy-svg" class="ps-rwy-svg"></div>
+      <div id="ps-rwy-list" class="ps-rwy-list"></div>
+    </section>
 
-      @* Route map *@
-      @if (r.Points.Count > 1)
-      {
-        <div id="planner-map" style="height:340px;border-radius:10px;overflow:hidden;margin-bottom:16px"></div>
-      }
-    }
+    <section class="ps-panel ps-glass" id="ps-wx">
+      <div class="ps-panel-head"><h3>@L["Weather"]</h3>
+        <div class="ps-seg" id="ps-wx-kind"><button type="button" data-v="metar">METAR</button><button type="button" data-v="taf">TAF</button></div>
+        <div class="ps-seg" id="ps-wx-raw"><button type="button" data-v="raw">@L["As sent"]</button><button type="button" data-v="words">@L["In words"]</button></div>
+      </div>
+      <div id="ps-wx-list"></div>
+    </section>
   </div>
+
+  <div class="ps-right">
+    <section class="ps-panel ps-glass" id="ps-load">
+      <div class="ps-panel-head"><h3>@L["Load and fuel"]</h3>
+        <div class="ps-seg" id="ps-units"><button type="button" data-v="kg">kg</button><button type="button" data-v="lb">lb</button></div>
+      </div>
+      <div id="ps-ac-name" class="ps-ac-name muted"></div>
+      <form id="ps-load-form" class="ps-load-form" autocomplete="off">
+        <label>@L["Cost index"]<input id="ps-ci" type="number" min="0" max="999" placeholder="30"></label>
+        <label>@L["Level FL"]<input id="ps-fl" type="number" min="10" max="510" step="10" placeholder="@L["auto"]"></label>
+        <label>@L["Passengers"]<input id="ps-pax" type="number" min="0" max="900" placeholder="@L["auto"]"></label>
+        <label>@L["Bags per pax"], <span class="ps-unit">kg</span><input id="ps-bag" type="number" min="0" max="100" placeholder="15"></label>
+        <label>@L["Cargo"], <span class="ps-unit">kg</span><input id="ps-cargo" type="number" min="0" max="200000" placeholder="0"></label>
+        <label>@L["Extra fuel"], <span class="ps-unit">kg</span><input id="ps-extra" type="number" min="0" max="100000" placeholder="0"></label>
+      </form>
+      <div id="ps-fuel" class="ps-fuel"></div>
+      <div id="ps-weights"></div>
+      <ul id="ps-warnings" class="ps-warnings"></ul>
+    </section>
+  </div>
+
+  <section class="ps-bottom ps-glass">
+    <div class="ps-bottom-head">
+      <div class="ps-tabs" id="ps-tabs">
+        <button type="button" data-tab="route" class="on">@L["Route"]</button>
+        <button type="button" data-tab="navlog">@L["Navigation log"]</button>
+        <button type="button" data-tab="fuel">@L["Fuel"]</button>
+        <button type="button" data-tab="summary">@L["Flight summary"]</button>
+        <button type="button" id="ps-collapse" class="ps-collapse" title="@L["Hide or show"]" aria-label="@L["Hide or show"]">▾</button>
+      </div>
+    </div>
+    <div class="ps-tab" id="ps-tab-route">
+      <div class="ps-route">
+        <div class="ps-route-main">
+          <div id="ps-route-text" class="ps-route-text mono"><span class="muted">@L["The route appears here."]</span></div>
+          <div class="ps-route-actions">
+            <button type="button" id="ps-copy" class="btn btn-small">@L["Copy"]</button>
+            <button type="button" id="ps-pdf" class="btn btn-small">PDF OFP</button>
+            <details class="ps-menu" id="ps-export">
+              <summary class="btn btn-small">@L["Export"] ▾</summary>
+              <div class="ps-menu-list">
+                <button type="button" data-fmt="pln">.pln — MSFS 2020 / 2024</button>
+                <button type="button" data-fmt="fms">.fms — X-Plane 11 / 12</button>
+                <button type="button" data-fmt="txt">.txt — OFP</button>
+              </div>
+            </details>
+            <a id="ps-file" class="btn btn-small btn-primary" href="/flightplan">@L["File the flight plan"]</a>
+            <a id="ps-simbrief" class="btn btn-small" href="https://dispatch.simbrief.com/" target="_blank" rel="noopener">@L["Open in SimBrief"]</a>
+            <span class="muted small">@L["Charts"]: <a id="ps-chart-dep" href="https://chartfox.org/" target="_blank" rel="noopener">—</a> · <a id="ps-chart-dest" href="https://chartfox.org/" target="_blank" rel="noopener">—</a></span>
+          </div>
+        </div>
+        <div id="ps-variants" class="ps-variants"></div>
+      </div>
+    </div>
+    <div class="ps-tab" id="ps-tab-navlog" hidden><div id="ps-navlog" class="ps-scroll"></div></div>
+    <div class="ps-tab" id="ps-tab-fuel" hidden><div id="ps-fueltab" class="ps-scroll"></div></div>
+    <div class="ps-tab" id="ps-tab-summary" hidden><div id="ps-summary" class="ps-scroll"></div></div>
+  </section>
+
+  <nav class="ps-dock ps-glass" id="ps-dock">
+    <button type="button" data-panel="ps-new">@L["Flight"]</button>
+    <button type="button" data-panel="ps-load">@L["Load and fuel"]</button>
+    <button type="button" data-panel="ps-wx">@L["Weather"]</button>
+    <button type="button" data-panel="ps-rwy">@L["Runways"]</button>
+    <button type="button" data-panel="ps-tabs">@L["Route"]</button>
+  </nav>
+
+  <div class="ps-busy" aria-hidden="true"><span></span></div>
+  <p class="ps-note muted small">@L["For the simulator only. Not for real-world navigation."]</p>
+  <pre id="ps-ofp" class="ps-ofp"></pre>
 </div>
-
 @section Scripts {
-  @if (hasResult && r!.Points.Count > 1)
-  {
-    <script src="~/lib/leaflet/leaflet.js"></script>
-  }
-  <script>
-    (function () {
-      @if (hasResult)
-      {
-        // Load METAR
-        <text>
-        function loadMetar(icao, el) {
-          fetch('/api/v1/metar/' + icao)
-            .then(r => r.ok ? r.json() : null)
-            .then(d => { if (el) el.textContent = d && d.metar ? d.metar : icao + ': no METAR'; })
-            .catch(() => { if (el) el.textContent = icao + ': METAR unavailable'; });
-        }
-        loadMetar('@dep', document.getElementById('metar-dep'));
-        @if (!string.IsNullOrEmpty(dest)) { <text>loadMetar('@dest', document.getElementById('metar-dest'));</text> }
-        </text>
-      }
-
-      @if (hasResult && r!.Points.Count > 1)
-      {
-        <text>
-        // Route map
-        var pts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            r!.Points.Select(p => new[] { Math.Round(p.Lat, 4), Math.Round(p.Lon, 4) }).ToArray()));
-        var map = L.map('planner-map', { zoomControl: true });
-        L.tileLayer('/tiles/osm/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 13 }).addTo(map);
-        var line = L.polyline(pts, { color: '#3b82f6', weight: 2.5, opacity: 0.85 }).addTo(map);
-        map.fitBounds(line.getBounds(), { padding: [24, 24] });
-        // Add small dots for fixes
-        pts.forEach(function(p, i) {
-          if (i === 0 || i === pts.length - 1) return;
-          L.circleMarker(p, { radius: 3, color: '#3b82f6', fillOpacity: 1, weight: 1.5 }).addTo(map);
-        });
-        // Markers for dep and dest
-        var icon = function(label) { return L.divIcon({ html: '<span style="background:#3b82f6;color:#fff;font-size:11px;font-weight:600;padding:2px 5px;border-radius:4px;white-space:nowrap">' + label + '</span>', className: '', iconAnchor: [0, 0] }); };
-        L.marker(pts[0], { icon: icon('@dep') }).addTo(map);
-        L.marker(pts[pts.length - 1], { icon: icon('@dest') }).addTo(map);
-        </text>
-      }
-    })();
-  </script>
+  <script src="~/lib/leaflet/leaflet.js"></script>
+  <script src="~/js/planner.js" asp-append-version="true"></script>
 }
