@@ -58,10 +58,12 @@ builder.Services.AddHttpClient("metar", c => c.Timeout = TimeSpan.FromSeconds(10
 builder.Services.AddSingleton<MetarService>();
 builder.Services.AddHttpClient("overpass", c =>
 {
-    c.Timeout = TimeSpan.FromSeconds(45);
+    c.Timeout = TimeSpan.FromSeconds(95);
     c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/chatgpt82628163-pixel/SkyNetwork-site)");
 });
 builder.Services.AddSingleton<AirportLayout>();
+builder.Services.AddSingleton<AirportLayoutWarmup>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<AirportLayoutWarmup>());
 builder.Services.AddSingleton<UploadStore>();
 builder.Services.AddSingleton<SkyNetwork.Site.Security.SignupGuard>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<NetworkFeed>());
