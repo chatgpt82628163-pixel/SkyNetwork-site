@@ -36,6 +36,14 @@ public sealed class CurrentUser(MemberService members)
             ctx.User = new ClaimsPrincipal(new ClaimsIdentity());
             return;
         }
+        // Reject cookies issued before the last password change.
+        var cookieStamp = ctx.User.FindFirstValue(SignIn.StampClaim) ?? "";
+        if (m.SecurityStamp.Length > 0 && cookieStamp != m.SecurityStamp)
+        {
+            await ctx.SignOutAsync();
+            ctx.User = new ClaimsPrincipal(new ClaimsIdentity());
+            return;
+        }
         Member = m;
         Roles = members.RolesOf(cid);
         Permissions = Security.Permissions.For(m.Rating, m.StaffRank, Roles);

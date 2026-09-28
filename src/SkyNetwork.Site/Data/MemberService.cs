@@ -11,7 +11,8 @@ public sealed class MemberService(Database db, IOptions<SiteOptions> options, Au
         SELECT m.cid, m.name, m.rating, m.staff_rank, m.suspended, p.email, COALESCE(p.country, '') AS country,
                p.registered_at, p.last_login_at, COALESCE(p.suspension_reason, '') AS suspension_reason,
                p.suspended_until, COALESCE(p.pilot_rating, 0) AS pilot_rating, COALESCE(p.military_rating, 0) AS military_rating,
-               COALESCE(p.email_verified, 1) AS email_verified, COALESCE(p.avatar, '') AS avatar
+               COALESCE(p.email_verified, 1) AS email_verified, COALESCE(p.avatar, '') AS avatar,
+               COALESCE(p.security_stamp, '') AS security_stamp
         FROM members m LEFT JOIN member_profiles p ON p.cid = m.cid
         """;
 
@@ -137,11 +138,21 @@ public sealed class MemberService(Database db, IOptions<SiteOptions> options, Au
         return c.ExecuteScalar<long>("SELECT suspended FROM members WHERE cid = @cid", new { cid }) != 0;
     }
 
-    public void ChangePassword(long cid, string password)
+    /// <summary>
+    /// Changes the password and rotates the security stamp; returns the new stamp.
+    /// The caller should re-issue the cookie for the current session so it stays signed in.
+    /// </summary>
+    public string ChangePassword(long cid, string password)
     {
         var (salt, hash) = PasswordHasher.Hash(password);
+        var stamp = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
         using var c = db.Open();
         c.Execute("UPDATE members SET salt = @salt, hash = @hash WHERE cid = @cid", new { cid, salt, hash });
+        c.Execute("""
+            INSERT INTO member_profiles (cid, registered_at, security_stamp) VALUES (@cid, @now, @stamp)
+            ON CONFLICT(cid) DO UPDATE SET security_stamp = @stamp
+            """, new { cid, now = Database.Now(), stamp });
+        return stamp;
     }
 
     public void UpdateProfile(long cid, string email, string country)

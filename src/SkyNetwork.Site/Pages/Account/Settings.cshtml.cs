@@ -86,6 +86,9 @@ public sealed class SettingsModel(CurrentUser me, MemberService members, Connect
         else
         {
             members.ChangePassword(me.Cid, NewPassword);
+            // Re-issue this session's cookie with the new stamp so the current session stays signed in.
+            var fresh = members.Find(me.Cid)!;
+            await HttpContext.SignInMemberAsync(fresh, remember: false);
             Message = "Password changed. Use the new password to connect to the network too";
         }
         return Page();

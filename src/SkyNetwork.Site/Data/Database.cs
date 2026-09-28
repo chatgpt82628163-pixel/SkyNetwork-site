@@ -29,7 +29,7 @@ public sealed class Database
     {
         var c = new SqliteConnection(_connectionString);
         c.Open();
-        c.Execute("PRAGMA busy_timeout = 3000;");
+        c.Execute("PRAGMA busy_timeout = 10000;");
         return c;
     }
 
@@ -207,11 +207,24 @@ public sealed class Database
             CREATE INDEX IF NOT EXISTS ix_friends_friend ON friends (friend_cid);
             """);
 
+        // Performance indexes (added after first release).
+        c.Execute("""
+            CREATE INDEX IF NOT EXISTS ix_tickets_cid ON tickets (cid);
+            CREATE INDEX IF NOT EXISTS ix_tickets_status ON tickets (status);
+            CREATE INDEX IF NOT EXISTS ix_sessions_started ON network_sessions (started_at);
+            """);
+
+        // Security stamp: lets the server invalidate all other sessions when the password changes.
+        AddColumn(c, "member_profiles", "security_stamp", "TEXT NOT NULL DEFAULT ''");
     }
 
     /// <summary>Adds the column if it is missing; true when it was added.</summary>
     private static bool AddColumn(SqliteConnection c, string table, string column, string type)
     {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(table, @"^[a-z_][a-z0-9_]*$"))
+            throw new ArgumentException($"Invalid table name: {table}");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(column, @"^[a-z_][a-z0-9_]*$"))
+            throw new ArgumentException($"Invalid column name: {column}");
         var columns = c.Query<string>($"SELECT name FROM pragma_table_info('{table}')");
         if (columns.Contains(column, StringComparer.OrdinalIgnoreCase)) return false;
         c.Execute($"ALTER TABLE {table} ADD COLUMN {column} {type}");
