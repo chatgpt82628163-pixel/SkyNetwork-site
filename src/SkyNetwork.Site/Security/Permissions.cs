@@ -33,6 +33,8 @@ public enum Perm
     SystemStatus = 1 << 18,
     /// <summary>Delete members' accounts (administrators only).</summary>
     DeleteAccounts = 1 << 19,
+    /// <summary>Edit aircraft performance profiles (administrators only).</summary>
+    ManageAircraft = 1 << 20,
     All = ~0,
 }
 

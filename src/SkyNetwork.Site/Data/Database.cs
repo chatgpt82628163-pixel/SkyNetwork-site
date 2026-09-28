@@ -216,6 +216,17 @@ public sealed class Database
 
         // Security stamp: lets the server invalidate all other sessions when the password changes.
         AddColumn(c, "member_profiles", "security_stamp", "TEXT NOT NULL DEFAULT ''");
+
+        // Aircraft performance overrides (staff-adjustable, base data comes from OpenAP bundle).
+        c.Execute("""
+            CREATE TABLE IF NOT EXISTS aircraft_overrides (
+                icao TEXT PRIMARY KEY COLLATE NOCASE,
+                mtow_kg REAL NOT NULL DEFAULT 0, mlw_kg REAL NOT NULL DEFAULT 0,
+                mzfw_kg REAL NOT NULL DEFAULT 0, oew_kg REAL NOT NULL DEFAULT 0,
+                mfc_kg REAL NOT NULL DEFAULT 0, seats_typical INTEGER NOT NULL DEFAULT 0,
+                pax_mass_kg REAL NOT NULL DEFAULT 0, baggage_mass_kg REAL NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL DEFAULT 0);
+            """);
     }
 
     /// <summary>Adds the column if it is missing; true when it was added.</summary>

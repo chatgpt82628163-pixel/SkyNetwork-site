@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using SkyNetwork.Site;
 using SkyNetwork.Site.Api;
+// Aircraft endpoints (OpenAP data) added.
 using SkyNetwork.Site.Data;
 using SkyNetwork.Site.Localization;
 using SkyNetwork.Site.Security;
@@ -37,6 +38,7 @@ builder.Services.AddSingleton<DivisionService>();
 builder.Services.AddSingleton<ConnectService>();
 builder.Services.AddSingleton<SessionService>();
 builder.Services.AddSingleton<FriendService>();
+builder.Services.AddSingleton<AircraftService>();
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<Lang>();
 builder.Services.AddHostedService<SuspensionExpiry>();
@@ -182,6 +184,7 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 app.MapSiteApi();
+app.MapAircraftApi();
 app.MapDivisionApi();
 app.MapConnect();
 app.MapDiscordBot();
