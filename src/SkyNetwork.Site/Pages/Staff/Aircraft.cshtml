@@ -1,0 +1,56 @@
+@page "/staff/aircraft"
+@model SkyNetwork.Site.Pages.Staff.AircraftModel
+@{ ViewData["Title"] = L["Aircraft profiles"]; }
+<h1 style="font-size:30px">@L["Aircraft profiles"]</h1>
+<p class="muted" style="max-width:760px">@L["Performance profiles from OpenAP (TU Delft, LGPL). You can override weights and passenger standards for any type; the base data stays unchanged."]</p>
+@if (Model.Message != null) { <div class="alert ok">@L[Model.Message]</div> }
+@if (Model.Error != null) { <div class="alert error">@L[Model.Error]</div> }
+
+<div class="grid" style="gap:10px">
+  @foreach (var p in Model.Profiles)
+  {
+    <details class="card" id="ac-@p.Icao">
+      <summary style="cursor:pointer">
+        <b>@p.Icao</b> <span class="muted small">@p.Name</span>
+        @if (p.IsMapped) { <span class="badge">@L["mapped"]</span> }
+        @if (p.IsOverridden) { <span class="badge">@L["overridden"]</span> }
+      </summary>
+      <div class="muted small" style="margin:8px 0 4px">
+        @L["Source"]: @p.Source
+        @if (p.MapNote.Length > 0) { <span>— @p.MapNote</span> }
+      </div>
+      <table style="margin-bottom:12px;font-size:13px">
+        <tr><th>OEW</th><td>@p.OewKg.ToString("N0") kg</td>
+            <th>MTOW</th><td>@p.MtowKg.ToString("N0") kg</td>
+            <th>MLW</th><td>@p.MlwKg.ToString("N0") kg</td></tr>
+        <tr><th>MZFW</th><td>@p.MzfwKg.ToString("N0") kg @(p.MzfwEstimated ? "(est.)" : "")</td>
+            <th>Max fuel</th><td>@p.MfcKg.ToString("N0") kg</td>
+            <th>Seats</th><td>@p.SeatsTypical</td></tr>
+        <tr><th>Cruise Mach</th><td>@p.CruiseMachLo.ToString("F2")–@p.CruiseMachHi.ToString("F2")</td>
+            <th>Ceiling</th><td>FL@(p.CeilingFt / 100)</td>
+            <th>Nom. cruise FF</th><td>@p.NomCruiseFfKgH.ToString("N0") kg/h</td></tr>
+      </table>
+      <form method="post" class="form" style="max-width:520px">
+        <input type="hidden" name="icao" value="@p.Icao">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label>@L["MTOW (kg)"]<input name="mtow" type="number" min="0" step="1" value="@(p.IsOverridden ? p.MtowKg.ToString("F0") : "")"></label>
+          <label>@L["MLW (kg)"]<input name="mlw" type="number" min="0" step="1" value="@(p.IsOverridden ? p.MlwKg.ToString("F0") : "")"></label>
+          <label>@L["MZFW (kg)"]<input name="mzfw" type="number" min="0" step="1" value="@(p.IsOverridden ? p.MzfwKg.ToString("F0") : "")"></label>
+          <label>@L["OEW (kg)"]<input name="oew" type="number" min="0" step="1" value="@(p.IsOverridden ? p.OewKg.ToString("F0") : "")"></label>
+          <label>@L["Max fuel (kg)"]<input name="mfc" type="number" min="0" step="1" value="@(p.IsOverridden ? p.MfcKg.ToString("F0") : "")"></label>
+          <label>@L["Seats (typical)"]<input name="seats" type="number" min="0" step="1" value="@(p.IsOverridden ? p.SeatsTypical.ToString() : "")"></label>
+          <label>@L["Pax mass incl. carry-on (kg)"]<input name="pax_mass" type="number" min="0" step="0.1" value="@(p.IsOverridden ? p.PaxMassKg.ToString("F1") : "")"></label>
+          <label>@L["Hold baggage per pax (kg)"]<input name="bag_mass" type="number" min="0" step="0.1" value="@(p.IsOverridden ? p.BaggageMassKg.ToString("F1") : "")"></label>
+        </div>
+        <div class="inline-form" style="margin-top:8px">
+          <button class="btn btn-primary btn-small" type="submit" asp-page-handler="Save">@L["Save overrides"]</button>
+          @if (p.IsOverridden)
+          {
+            <button class="btn btn-small" type="submit" asp-page-handler="Reset"
+              onclick="return confirm('@L["Reset to OpenAP defaults?"]')">@L["Reset to defaults"]</button>
+          }
+        </div>
+      </form>
+    </details>
+  }
+</div>

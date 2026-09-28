@@ -29,6 +29,7 @@
     @if (Me.Has(Perm.Tickets) || Me.Has(Perm.ApproveRatings)) { <div class="side-title">@L["Work"]</div> }
     @if (Me.Has(Perm.Tickets)) { <a href="/staff/tickets" class="@A("/staff/tickets")">@L["Support tickets"] @if (openTickets > 0) { <span class="count">@openTickets</span> }</a> }
     @if (Me.Has(Perm.ManageDivisions)) { <a href="/staff/connect" class="@A("/staff/connect")">@L["Sign-in for other sites"]</a> }
+    @if (Me.Has(Perm.ManageAircraft)) { <a href="/staff/aircraft" class="@A("/staff/aircraft")">@L["Aircraft profiles"]</a> }
     @if (Me.Has(Perm.ApproveRatings)) { <a href="/staff/ratings" class="@A("/staff/ratings")">@L["Rating requests"] @if (pendingRatings > 0) { <span class="count">@pendingRatings</span> }</a> }
     @if (Me.Has(Perm.Events) || Me.Has(Perm.News) || Me.Has(Perm.Bookings)) { <div class="side-title">@L["Website"]</div> }
     @if (Me.Has(Perm.Events)) { <a href="/staff/events" class="@A("/staff/events")">@L["Events"]</a> }
