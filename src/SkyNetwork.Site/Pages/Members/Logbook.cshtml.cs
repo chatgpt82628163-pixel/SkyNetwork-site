@@ -24,7 +24,7 @@ public sealed class LogbookModel(MemberService members, SessionService sessions)
         if (members.FindConfirmed(cid) is not { } m) return NotFound();
         Member = m;
         Tab = tab is "pilot" or "atc" ? tab : "all";
-        Year = year;
+        Year = year is >= 2000 and <= 2099 ? year : null;
         CurrentPage = Math.Max(0, p);
 
         Hours = sessions.Hours(cid);
