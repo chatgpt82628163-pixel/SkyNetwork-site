@@ -44,7 +44,7 @@ public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<Site
         // Stale cache: return it right away and refresh in the background so the caller doesn't wait.
         if (file.Exists)
         {
-            _ = TriggerRefreshAsync(icao, file.FullName);
+            TriggerRefreshAsync(icao, file.FullName);
             return await File.ReadAllTextAsync(file.FullName, ct);
         }
 
@@ -60,10 +60,10 @@ public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<Site
     // Kick off a non-blocking background refresh; errors are logged inside FetchAsync.
     private void TriggerRefreshAsync(string icao, string path)
     {
-        _inFlight.GetOrAdd(icao, _ =>
+        _inFlight.GetOrAdd(icao, key =>
         {
             var t = FetchAsync(icao, path);
-            _ = t.ContinueWith(_ => _inFlight.TryRemove(icao, out _), TaskContinuationOptions.ExecuteSynchronously);
+            t.ContinueWith(_ => _inFlight.TryRemove(icao, out _), TaskContinuationOptions.ExecuteSynchronously);
             return t;
         });
     }
