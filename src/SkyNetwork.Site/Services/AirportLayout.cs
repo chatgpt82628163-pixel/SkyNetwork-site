@@ -14,16 +14,21 @@ namespace SkyNetwork.Site.Services;
 public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<SiteOptions> options, IWebHostEnvironment env, ILogger<AirportLayout> log)
 {
     private static readonly TimeSpan MaxAge = TimeSpan.FromDays(30);
-    // Public Overpass servers, tried in order: the main one is often busy.
+    // Public Overpass servers, tried in order.
     private static readonly string[] Servers =
     [
         "https://overpass-api.de/api/interpreter",
         "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.openstreetmap.fr/api/interpreter",
+        "https://overpass.osm.rambler.ru/cgi/interpreter",
     ];
     // Overpass asks for few parallel requests; the same airport is fetched once however many visitors look at it.
     private readonly SemaphoreSlim _overpass = new(2);
     private readonly ConcurrentDictionary<string, Task<string?>> _inFlight = new();
+    // Remember when a fetch failed so visitors don't hammer the servers repeatedly.
+    private readonly ConcurrentDictionary<string, DateTime> _failures = new();
+    private static readonly TimeSpan BackoffWindow = TimeSpan.FromMinutes(10);
 
     [GeneratedRegex("^[A-Z0-9]{3,4}$")] private static partial Regex Icao();
 
@@ -33,17 +38,40 @@ public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<Site
         icao = icao.ToUpperInvariant();
         if (!Icao().IsMatch(icao)) return null;
         var file = new FileInfo(Path.Combine(CacheDir, icao + ".json"));
+        // Fresh cache: serve immediately.
         if (file.Exists && DateTime.UtcNow - file.LastWriteTimeUtc < MaxAge) return await File.ReadAllTextAsync(file.FullName, ct);
 
+        // Stale cache: return it right away and refresh in the background so the caller doesn't wait.
+        if (file.Exists)
+        {
+            TriggerRefreshAsync(icao, file.FullName);
+            return await File.ReadAllTextAsync(file.FullName, ct);
+        }
+
+        // No cache: fetch, but honour the backoff window to avoid a storm of requests.
+        if (_failures.TryGetValue(icao, out var lastFail) && DateTime.UtcNow - lastFail < BackoffWindow)
+            return null;
+
         var task = _inFlight.GetOrAdd(icao, _ => FetchAsync(icao, file.FullName));
-        try { return await task.WaitAsync(ct) ?? (file.Exists ? await File.ReadAllTextAsync(file.FullName, ct) : null); }
+        try { return await task.WaitAsync(ct); }
         finally { if (task.IsCompleted) _inFlight.TryRemove(icao, out _); }
+    }
+
+    // Kick off a non-blocking background refresh; errors are logged inside FetchAsync.
+    private void TriggerRefreshAsync(string icao, string path)
+    {
+        _inFlight.GetOrAdd(icao, key =>
+        {
+            var t = FetchAsync(icao, path);
+            t.ContinueWith(completed => _inFlight.TryRemove(icao, out _), TaskContinuationOptions.ExecuteSynchronously);
+            return t;
+        });
     }
 
     private async Task<string?> FetchAsync(string icao, string path)
     {
         string query = $$"""
-            [out:json][timeout:60];
+            [out:json][timeout:85];
             nwr["aeroway"="aerodrome"]["icao"="{{icao}}"]->.ad;
             .ad map_to_area->.a;
             (
@@ -71,7 +99,12 @@ public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<Site
                     log.LogWarning("Airport {Icao}: {Server} {Error}", icao, new Uri(server).Host, e.Message);
                 }
             }
-            if (answer == null) return null;
+            if (answer == null)
+            {
+                _failures[icao] = DateTime.UtcNow;
+                return null;
+            }
+            _failures.TryRemove(icao, out _);
             string json = Reduce(icao, answer);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             string tmp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -82,9 +115,19 @@ public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<Site
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or IOException)
         {
             log.LogWarning("Airport {Icao}: {Error}", icao, e.Message);
+            _failures[icao] = DateTime.UtcNow;
             return null;
         }
         finally { _overpass.Release(); }
+    }
+
+    /// <summary>Returns true when the cache file exists and is fresh (no fetch needed).</summary>
+    public bool IsCacheFresh(string icao)
+    {
+        icao = icao.ToUpperInvariant();
+        if (!Icao().IsMatch(icao)) return false;
+        var file = new FileInfo(Path.Combine(CacheDir, icao + ".json"));
+        return file.Exists && DateTime.UtcNow - file.LastWriteTimeUtc < MaxAge;
     }
 
     /// <summary>

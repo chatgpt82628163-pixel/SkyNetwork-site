@@ -68,4 +68,10 @@ public sealed class SiteOptions
     public int VoicePort { get; set; } = 3782;
     /// <summary>GitHub repositories of the programs whose latest release the status page checks: "owner/repo=Name", comma-separated.</summary>
     public string ReleaseRepos { get; set; } = "chatgpt82628163-pixel/SkyPilot=SkyPilot,chatgpt82628163-pixel/Network-ATC=Network-ATC";
+
+    /// <summary>
+    /// Comma-separated ICAO codes to warm up in the background at startup and daily, in addition to airports seen
+    /// in the current network feed and recent flight activity. Default: main Russian and nearby airports.
+    /// </summary>
+    public string AirportWarmup { get; set; } = "UUEE,UUDD,UUWW,UUBW,ULLI,URSS,URKK,UWWW,USSS,UNNT,UHWW,UMMS";
 }
