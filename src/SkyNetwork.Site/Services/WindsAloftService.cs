@@ -26,7 +26,8 @@ public sealed class WindsAloftService(IHttpClientFactory http, ILogger<WindsAlof
         if (altM <= 11000)
             return 1013.25 * Math.Pow(1 - altM / 44330.8, 5.25588);
         // Stratosphere: 216.65 K isothermal
-        return 226.321 * Math.Exp(-0.0341632 * (altM - 11000));
+        // p = p11 · exp(−g/R · Δh / T11); 0.0341632 K/m is g/R.
+        return 226.321 * Math.Exp(-0.0341632 / 216.65 * (altM - 11000));
     }
 
     /// <summary>Altitude in feet for a given pressure level (ISA).</summary>
@@ -34,7 +35,7 @@ public sealed class WindsAloftService(IHttpClientFactory http, ILogger<WindsAlof
     {
         if (hPa >= 226.321)
             return (1 - Math.Pow(hPa / 1013.25, 1 / 5.25588)) * 44330.8 / 0.3048;
-        return (11000 - Math.Log(hPa / 226.321) / 0.0341632) / 0.3048;
+        return (11000 - Math.Log(hPa / 226.321) * 216.65 / 0.0341632) / 0.3048;
     }
 
     /// <summary>ISA temperature in °C at the given altitude in feet.</summary>

@@ -466,6 +466,9 @@ public sealed partial class NavData(Database db, IWebHostEnvironment env, ILogge
         }
 
         double totalDist = Distance(depPos.Value.Lat, depPos.Value.Lon, destPos.Value.Lat, destPos.Value.Lon);
+        // Back to the same airport (a circuit, a test flight): no airway can do better than direct.
+        if (departure == destination)
+            return new FindRouteResult("DCT", BuildDirectPoints(departure, destination, depPos, destPos), totalDist, true);
 
         lock (_lock)
         {

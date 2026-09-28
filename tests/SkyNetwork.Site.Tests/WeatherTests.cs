@@ -82,7 +82,7 @@ public class MetarDecoderTests
         Assert.Equal("TS", d.Weather[0].Descriptor);
         Assert.Contains("RA", d.Weather[0].Phenomena);
         Assert.Equal("CB", d.Clouds[0].CloudType);
-        Assert.Equal("IFR", d.FlightCategory); // 8000m = ~5SM, but ceiling SCT020 = VFR; actually 8000m > 5000m = VFR
+        Assert.Equal("MVFR", d.FlightCategory); // 8000 m is just under 5 SM; the ceiling (BKN040) is VFR
     }
 
     [Fact]
@@ -275,8 +275,9 @@ public class FlightCategoryTests
     [InlineData(10000, "BKN", 2000, "MVFR")]
     [InlineData(10000, "BKN", 900, "IFR")]
     [InlineData(10000, "OVC", 400, "LIFR")]
-    [InlineData(1500, "BKN", 5000, "MVFR")] // vis drives MVFR
-    [InlineData(800,  "FEW", 9000, "IFR")]  // vis drives IFR
+    [InlineData(6000, "BKN", 5000, "MVFR")] // vis drives MVFR (3.7 SM)
+    [InlineData(3000, "FEW", 9000, "IFR")]  // vis drives IFR (1.9 SM)
+    [InlineData(1500, "FEW", 9000, "LIFR")] // under 1 SM
     [InlineData(400,  "FEW", 9000, "LIFR")] // vis drives LIFR
     public void CategoryByVisAndCeiling(int visM, string cover, int ceilFt, string expected)
     {

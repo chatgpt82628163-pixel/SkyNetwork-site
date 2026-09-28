@@ -23,7 +23,7 @@ public record WindInfo(bool Variable, int Direction, int Speed, int? Gust, strin
 public record VisibilityInfo(int? Metres, double? StatuteMiles, bool Cavok, bool Nsc)
 {
     /// Effective visibility in metres for flight-category calculation.
-    public int EffectiveMetres => Cavok || Nsc ? 10000 : Metres ?? (StatuteMiles is { } sm ? (int)(sm * 1609.34) : 0);
+    public int EffectiveMetres => Cavok ? 10000 : Metres ?? (StatuteMiles is { } sm ? (int)(sm * 1609.34) : 0);
     public double EffectiveSm => EffectiveMetres / 1609.34;
 }
 

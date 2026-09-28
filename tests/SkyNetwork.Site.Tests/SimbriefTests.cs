@@ -173,7 +173,7 @@ public class SimbriefTests
              "pilots":[{"cid":{{cid}},"name":"Route Pilot","callsign":"AFL1234","logon_time":1789999000,"latitude":{{lat.ToString(System.Globalization.CultureInfo.InvariantCulture)}},"longitude":37.3,
                         "altitude":{{alt}},"groundspeed":{{gs}},"transponder":"2000","flight_plan":"*A:I:A20N:447:UUEE:0920:0:FL350:EDDF:3:45:5:30::/V/:ARTIM UL603 NEVEM"},
                        {"cid":{{other}},"name":"Plain Pilot","callsign":"SBI55","logon_time":1789999000,"latitude":43.5,"longitude":40.0,
-                        "altitude":12000,"groundspeed":300,"transponder":"2000","flight_plan":"*A:I:B738:440:URSS:1200:0:FL330:UUEE:2:0:3:0::/V/:ZUBOK G487 MINPU DCT ZZZZZ"}],
+                        "altitude":12000,"groundspeed":300,"transponder":"2000","flight_plan":"*A:I:B738:440:URSS:1200:0:FL330:UUEE:2:0:3:0::/V/:BINOL G487 ERSAR DCT ZZZZZ"}],
              "controllers":[]}
             """;
         feed.Ingest(Feed(55.9, 4500, 250));
@@ -192,7 +192,7 @@ public class SimbriefTests
         // No SimBrief: the route text is worked out with the bundled airways; unknown tokens are named.
         var plain = await c.GetFromJsonAsync<JsonElement>("/api/v1/pilots/SBI55/route");
         Assert.Equal("route", plain.GetProperty("source").GetString());
-        Assert.Equal(["URSS", "ZUBOK", "ABELA", "MINPU", "UUEE"], plain.GetProperty("waypoints").EnumerateArray().Select(p => p[0].GetString()));
+        Assert.Equal(["URSS", "BINOL", "GUBOR", "ERSAR", "UUEE"], plain.GetProperty("waypoints").EnumerateArray().Select(p => p[0].GetString()));
         Assert.Equal("G487", plain.GetProperty("waypoints")[2][3].GetString());
         Assert.Equal(["ZZZZZ"], plain.GetProperty("unresolved").EnumerateArray().Select(u => u.GetString()));
         Assert.Equal(JsonValueKind.Null, plain.GetProperty("extras").ValueKind);

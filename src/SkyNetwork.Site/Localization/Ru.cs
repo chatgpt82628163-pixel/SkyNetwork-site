@@ -1048,6 +1048,7 @@ public static class Ru
         ["QNH"] = "QNH",
         ["QFE"] = "QFE",
         ["No significant change"] = "Без существенных изменений",
+        ["No significant change."] = "Без существенных изменений.",
         ["Weather data by Open-Meteo.com"] = "Данные о погоде от Open-Meteo.com",
         // Runway wind components
         ["Headwind"] = "Встречный ветер",

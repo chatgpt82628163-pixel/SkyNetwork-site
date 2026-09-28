@@ -20,7 +20,7 @@ public static partial class WeatherDecoder
     [GeneratedRegex(@"^(M?(\d+)(\.\d+)?)SM$")]
     private static partial Regex VisSmRx();
 
-    [GeneratedRegex(@"^R(\d{2}[LCR]?)/([PM]?)(\d{4})(V([PM]?)(\d{4}))?(FT)?([UDN]?)$")]
+    [GeneratedRegex(@"^R(\d{2}[LCR]?)/([PM]?)(\d{4})(V([PM]?)(\d{4}))?(FT)?/?([UDN]?)$")]
     private static partial Regex RvrRx();
 
     [GeneratedRegex(@"^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$")]
@@ -219,8 +219,9 @@ public static partial class WeatherDecoder
             }
             if (tok is "NSC" or "NCD" or "CLR" or "SKC")
             {
-                if (vis == null) vis = new VisibilityInfo(10000, null, false, true);
-                if (tok is "NSC" or "NCD" or "CLR" or "SKC") clouds.Add(new CloudLayer(tok, null, null));
+                // NSC is about cloud, not visibility: the reported visibility stays, only marked.
+                if (tok is "NSC") vis = vis == null ? new VisibilityInfo(null, null, false, true) : vis with { Nsc = true };
+                clouds.Add(new CloudLayer(tok, null, null));
                 i++; continue;
             }
 
@@ -548,8 +549,9 @@ public static partial class WeatherDecoder
 
     public static string FlightCategory(VisibilityInfo? vis, IReadOnlyList<CloudLayer> clouds)
     {
-        int visM = vis?.EffectiveMetres ?? 0;
-        double visSm = visM / 1609.34;
+        // Only a reported visibility (or CAVOK) counts; a missing one does not make the weather LIFR.
+        bool visKnown = vis is { Cavok: true } || vis?.Metres != null || vis?.StatuteMiles != null;
+        double visSm = vis?.EffectiveSm ?? 0;
 
         // Lowest ceiling (BKN or OVC).
         int? ceiling = null;
@@ -562,7 +564,7 @@ public static partial class WeatherDecoder
             if (c.Cover == "VV" && c.AltitudeFt is { } ft)
                 if (ceiling == null || ft < ceiling) ceiling = ft;
 
-        bool cavok = vis?.Cavok == true || vis?.Nsc == true;
+        bool cavok = vis?.Cavok == true || !visKnown;
 
         // Check ceiling.
         bool cLifr  = ceiling is < 500;
@@ -702,7 +704,6 @@ public static partial class WeatherDecoder
     private static string VisEn(VisibilityInfo v)
     {
         if (v.Cavok) return "CAVOK";
-        if (v.Nsc) return "No significant cloud";
         if (v.Metres is { } m) return m >= 9999 ? "visibility 10 km or more" : $"visibility {m} m";
         if (v.StatuteMiles is { } sm) return $"visibility {sm:F1} SM";
         return "visibility not reported";
@@ -711,7 +712,6 @@ public static partial class WeatherDecoder
     private static string VisRu(VisibilityInfo v)
     {
         if (v.Cavok) return "CAVOK";
-        if (v.Nsc) return "Нет существенной облачности";
         if (v.Metres is { } m) return m >= 9999 ? "видимость 10 км и более" : $"видимость {m} м";
         if (v.StatuteMiles is { } sm) return $"видимость {sm:F1} СМ";
         return "видимость не сообщается";
