@@ -225,3 +225,6 @@ html:has(#ps)::-webkit-scrollbar { display: none; }
 .ps-load-form label { display: flex; flex-direction: column; justify-content: flex-end; }
 .ps-load-form .ps-lbl { line-height: 1.25; }
 .ps-load-form label.is-auto .ps-lbl::after { content: " · " attr(data-auto); color: var(--accent-ink); text-transform: none; letter-spacing: 0; }
+.ps-busy-chip { padding: 4px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; font-size: 13px; animation: ps-pulse 1.2s ease-in-out infinite; }
+@keyframes ps-pulse { 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .ps-busy-chip { animation: none; } }

@@ -1085,6 +1085,7 @@ public static class Ru
         ["Route, cruise level, time and fuel estimate for a flight — for simulator use only."] = "Маршрут, эшелон, время и расход топлива — только для симулятора.",
         ["Calculate"] = "Рассчитать",
         // Planner studio
+        ["Calculating…"] = "Считаю…",
         ["Fuel left"] = "Остаток",
         ["Total time"] = "Всего",
         ["kt"] = "уз",

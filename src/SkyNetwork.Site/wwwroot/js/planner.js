@@ -150,6 +150,11 @@
     if (!q.get('dep') || !q.get('dest') || !q.get('type')) { $('#ps-dep').focus(); return; }
     const my = ++busy;
     root.classList.add('loading');
+    // The first plan for an airport can take a while (its runways come from OpenStreetMap): say so.
+    const btn = $('#ps-form button[type=submit]');
+    btn.dataset.text ??= btn.textContent;
+    btn.textContent = t('Calculating…'); btn.disabled = true;
+    $('#ps-top-busy').hidden = false;
     $('#ps-error').hidden = true;
     try {
       const r = await fetch('/api/v1/planner/plan?' + q);
@@ -164,7 +169,11 @@
       $('#ps-error').textContent = e.message;
       $('#ps-error').hidden = false;
     } finally {
-      if (my === busy) root.classList.remove('loading');
+      if (my === busy) {
+        root.classList.remove('loading');
+        btn.textContent = btn.dataset.text; btn.disabled = false;
+        $('#ps-top-busy').hidden = true;
+      }
     }
   }
 

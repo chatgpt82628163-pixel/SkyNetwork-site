@@ -21,7 +21,7 @@ public static class PlannerTexts
         "Flight", "Callsign", "Aircraft type", "Date", "Off block", "On block", "Block time", "Plan", "Cruise level", "Cost index",
         "Cruise speed", "Route distance", "Great circle", "Average wind", "Wind component", "ISA deviation", "Units",
         "Winds aloft", "none (calm, ISA)", "Load sheet", "Trip fuel", "Empty weight", "Baggage", "Cargo",
-        "For the simulator only. Not for real-world navigation.", "Warnings",
+        "For the simulator only. Not for real-world navigation.", "Warnings", "Calculating…",
     ];
 
     public static string Json(Lang l) => JsonSerializer.Serialize(Keys.ToDictionary(k => k, k => l[k]));
