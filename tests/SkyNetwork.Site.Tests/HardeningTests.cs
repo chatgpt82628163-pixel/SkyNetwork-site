@@ -68,16 +68,8 @@ public class SecurityStampTests
         var method = typeof(Database).GetMethod("AddColumn",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
         Assert.NotNull(method); // sanity: method must exist
-        var conn = typeof(Database)
-            .GetField("_connection", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.GetValue(db);
-        if (conn == null)
-        {
-            // Fallback: confirm the guard rejects names that contain hyphens by catching TargetInvocationException.
-            // We cannot get the connection here; we confirm the guard exists in the source instead.
-            Assert.NotNull(db);
-            return;
-        }
+        // Open a real connection (same path the site uses) so we can call AddColumn directly.
+        using var conn = db.Open();
         var ex = Assert.Throws<System.Reflection.TargetInvocationException>(() =>
             method.Invoke(null, [conn, "bad-table", "col", "TEXT"]));
         Assert.IsType<ArgumentException>(ex.InnerException);
