@@ -76,7 +76,7 @@ public sealed class SettingsModel(CurrentUser me, MemberService members, Connect
         return Page();
     }
 
-    public IActionResult OnPostPassword()
+    public async Task<IActionResult> OnPostPasswordAsync()
     {
         OnGet();
         if (members.Authenticate(me.Cid, Current) == null) Error = "The current password is wrong";
