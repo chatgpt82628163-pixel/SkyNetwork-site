@@ -1,0 +1,13 @@
+Open-Meteo Weather API
+======================
+Used for: winds and temperatures aloft (pressure-level variables).
+URL: https://open-meteo.com/
+Licence: Creative Commons Attribution 4.0 International (CC BY 4.0)
+         https://creativecommons.org/licenses/by/4.0/
+
+Attribution required wherever data is shown:
+  "Weather data by Open-Meteo.com"
+
+API is free for non-commercial use (Open-Meteo terms: https://open-meteo.com/terms).
+This implementation batches requests by 0.5° grid cell, caches for 60 minutes,
+uses a proper User-Agent, and respects the rate limits.

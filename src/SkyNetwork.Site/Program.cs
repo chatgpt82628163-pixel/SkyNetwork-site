@@ -54,8 +54,18 @@ builder.Services.AddSingleton<TileProxy>();
 builder.Services.AddSingleton<NavData>();
 builder.Services.AddHttpClient("simbrief", c => c.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddSingleton<Simbrief>();
-builder.Services.AddHttpClient("metar", c => c.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient("metar", c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(10);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/chatgpt82628163-pixel/SkyNetwork-site)");
+});
 builder.Services.AddSingleton<MetarService>();
+builder.Services.AddHttpClient("aloft", c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(20);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/chatgpt82628163-pixel/SkyNetwork-site)");
+});
+builder.Services.AddSingleton<WindsAloftService>();
 builder.Services.AddHttpClient("overpass", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(45);

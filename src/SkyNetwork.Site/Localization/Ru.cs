@@ -1035,5 +1035,28 @@ public static class Ru
         ["Previous"] = "Назад",
         ["Next"] = "Далее",
         ["No sessions found."] = "Записей не найдено.",
+        // Weather / METAR / TAF
+        ["Weather"] = "Погода",
+        ["METAR"] = "METAR",
+        ["TAF"] = "TAF",
+        ["Flight category"] = "Категория полёта",
+        ["Wind"] = "Ветер",
+        ["Visibility"] = "Видимость",
+        ["Cloud"] = "Облачность",
+        ["Temperature"] = "Температура",
+        ["Dew point"] = "Точка росы",
+        ["QNH"] = "QNH",
+        ["QFE"] = "QFE",
+        ["No significant change"] = "Без существенных изменений",
+        ["Weather data by Open-Meteo.com"] = "Данные о погоде от Open-Meteo.com",
+        // Runway wind components
+        ["Headwind"] = "Встречный ветер",
+        ["Tailwind"] = "Попутный ветер",
+        ["Crosswind left"] = "Боковой ветер (слева)",
+        ["Crosswind right"] = "Боковой ветер (справа)",
+        // Winds aloft
+        ["Winds and temperatures aloft"] = "Ветер и температура на высотах",
+        ["Flight level"] = "Эшелон",
+        ["ISA deviation"] = "Отклонение от МСА",
     };
 }

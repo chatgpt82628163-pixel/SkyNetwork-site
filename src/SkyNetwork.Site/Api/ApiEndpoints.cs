@@ -186,6 +186,91 @@ public static class ApiEndpoints
             n.Id, title = n.TitleIn(lang == "en"), body = n.BodyIn(lang == "en"), author = n.AuthorName, created = n.Created,
             banner = n.BannerUrlIn(lang == "en"),
         }));
+
+        // ── Weather ────────────────────────────────────────────────────────────
+
+        // GET /api/v1/weather/{icao} → metar raw+decoded (ru/en), taf raw+decoded, flight category
+        v1.MapGet("/weather/{icao}", async (string icao, MetarService metar, CancellationToken ct) =>
+        {
+            icao = icao.ToUpperInvariant();
+            var metarRaw = await metar.GetAsync(icao, ct);
+            if (metarRaw == null) return Results.NotFound();
+
+            var tafRaw = await metar.GetTafAsync(icao, ct) ?? "";
+
+            DecodedMetar? decoded = metarRaw.Length > 0 ? WeatherDecoder.DecodeMetar(metarRaw) : null;
+            DecodedTaf? taf = tafRaw.Length > 0 ? WeatherDecoder.DecodeTaf(tafRaw) : null;
+
+            return Results.Ok(new
+            {
+                icao,
+                metar = new
+                {
+                    raw = metarRaw,
+                    decoded = decoded == null ? null : new
+                    {
+                        obsTime      = decoded.ObsTime,
+                        auto         = decoded.Auto,
+                        wind         = decoded.Wind,
+                        visibility   = decoded.Visibility,
+                        rvr          = decoded.Rvr,
+                        weather      = decoded.Weather,
+                        clouds       = decoded.Clouds,
+                        tempC        = decoded.TempC,
+                        dewC         = decoded.DewC,
+                        qnhHpa       = decoded.QnhHpa,
+                        altInHg      = decoded.AltInHg,
+                        qfe          = decoded.Qfe,
+                        runwayStates = decoded.RunwayStates,
+                        trends       = decoded.Trends,
+                        remarks      = decoded.Remarks,
+                        flightCategory = decoded.FlightCategory,
+                        textEn       = decoded.HumanEn,
+                        textRu       = decoded.HumanRu,
+                    },
+                },
+                taf = new
+                {
+                    raw = tafRaw,
+                    decoded = taf == null ? null : new
+                    {
+                        issueTime  = taf.IssueTime,
+                        validFrom  = taf.ValidFrom,
+                        validTo    = taf.ValidTo,
+                        groups     = taf.Groups,
+                        textEn     = taf.HumanEn,
+                        textRu     = taf.HumanRu,
+                    },
+                },
+                flightCategory = decoded?.FlightCategory ?? "UNKNOWN",
+            });
+        });
+
+        // GET /api/v1/weather/aloft?points=lat,lon;lat,lon&fl=350&time=ISO
+        v1.MapGet("/weather/aloft", async (string? points, int? fl, string? time, WindsAloftService aloft, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(points) || fl is not { } flLevel)
+                return Results.BadRequest("points and fl are required");
+
+            List<(double Lat, double Lon)> pts = [];
+            foreach (var pair in points.Split(';', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = pair.Split(',');
+                if (parts.Length == 2
+                    && double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double lat)
+                    && double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double lon))
+                    pts.Add((lat, lon));
+            }
+            if (pts.Count == 0) return Results.BadRequest("no valid lat,lon pairs");
+            if (pts.Count > 50) return Results.BadRequest("too many points (max 50)");
+
+            DateTime validTime = string.IsNullOrWhiteSpace(time)
+                ? DateTime.UtcNow
+                : DateTime.TryParse(time, null, System.Globalization.DateTimeStyles.RoundtripKind, out var t) ? t.ToUniversalTime() : DateTime.UtcNow;
+
+            var result = await aloft.GetAloftAsync(pts, flLevel, validTime, ct);
+            return Results.Ok(new { attribution = "Weather data by Open-Meteo.com", points = result });
+        });
     }
 
     /// <summary>Body of POST /api/v1/auth/pilot.</summary>
