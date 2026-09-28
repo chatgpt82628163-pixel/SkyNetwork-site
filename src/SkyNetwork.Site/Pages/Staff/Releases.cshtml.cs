@@ -72,13 +72,13 @@ public sealed class ReleasesModel(CurrentUser me, ReleaseService releases) : Sta
 
             if (header[0] != 0x4D || header[1] != 0x5A)
             {
-                File.Delete(tempPath);
+                System.IO.File.Delete(tempPath);
                 return BadRequest("The file is not a Windows executable (MZ header missing)", null);
             }
         }
         catch
         {
-            try { File.Delete(tempPath); } catch { }
+            try { System.IO.File.Delete(tempPath); } catch { }
             throw;
         }
 
@@ -102,11 +102,11 @@ public sealed class ReleasesModel(CurrentUser me, ReleaseService releases) : Sta
         string? error = releases.Insert(r);
         if (error != null)
         {
-            File.Delete(tempPath);
+            System.IO.File.Delete(tempPath);
             return BadRequest(error, null);
         }
 
-        File.Move(tempPath, dest, overwrite: false);
+        System.IO.File.Move(tempPath, dest, overwrite: false);
         Message = "Uploaded";
         Load();
         return Page();
