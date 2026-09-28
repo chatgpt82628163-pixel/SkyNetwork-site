@@ -48,7 +48,7 @@ builder.Services.AddHttpClient("tiles", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(10);
     // Tile providers require an identifying User-Agent.
-    c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/Anntixs/Skynetwork-site)");
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/chatgpt82628163-pixel/SkyNetwork-site)");
 });
 builder.Services.AddSingleton<TileProxy>();
 builder.Services.AddSingleton<NavData>();
@@ -59,7 +59,7 @@ builder.Services.AddSingleton<MetarService>();
 builder.Services.AddHttpClient("overpass", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(45);
-    c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/Anntixs/Skynetwork-site)");
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/chatgpt82628163-pixel/SkyNetwork-site)");
 });
 builder.Services.AddSingleton<AirportLayout>();
 builder.Services.AddSingleton<UploadStore>();
@@ -68,7 +68,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<NetworkFeed>());
 builder.Services.AddHttpClient("health", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(15);
-    c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/Anntixs/Skynetwork-site)");
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/chatgpt82628163-pixel/SkyNetwork-site)");
 });
 builder.Services.AddSingleton<SkyNetwork.Site.Services.Health.HealthMonitor>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<SkyNetwork.Site.Services.Health.HealthMonitor>());

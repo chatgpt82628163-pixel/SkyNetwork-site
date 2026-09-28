@@ -42,7 +42,7 @@ public sealed class SiteOptions
     /// <summary>Seconds the registration form must be open before it is sent (bots send it at once); 0 turns the check off.</summary>
     public int SignupMinSeconds { get; set; } = 3;
     /// <summary>
-    /// The Discord bot's own web page (github.com/Anntixs/skynetwork_bot): /discord/… is passed on to it, so members come
+    /// The Discord bot's own web page (github.com/chatgpt82628163-pixel/Skynetwork-bot): /discord/… is passed on to it, so members come
     /// back to it after signing in with SkyNetwork Connect. Empty turns this off.
     /// </summary>
     public string DiscordBotUrl { get; set; } = "http://127.0.0.1:8090";
@@ -67,5 +67,5 @@ public sealed class SiteOptions
     /// <summary>UDP port of the voice server.</summary>
     public int VoicePort { get; set; } = 3782;
     /// <summary>GitHub repositories of the programs whose latest release the status page checks: "owner/repo=Name", comma-separated.</summary>
-    public string ReleaseRepos { get; set; } = "Anntixs/skypilot=SkyPilot,Anntixs/Network-ATC=Network-ATC";
+    public string ReleaseRepos { get; set; } = "chatgpt82628163-pixel/SkyPilot=SkyPilot,chatgpt82628163-pixel/Network-ATC=Network-ATC";
 }

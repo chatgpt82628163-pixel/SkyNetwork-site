@@ -26,7 +26,7 @@ install -D -t /opt/skynetwork/fsd "$FSD_SRC/build/skynet-fsd" "$FSD_SRC/build/sk
 
 echo "== Голосовой сервер"
 if [ ! -d "$VOICE_SRC" ]; then
-  git clone https://github.com/Anntixs/Skynetwork-voice.git "$VOICE_SRC"
+  git clone https://github.com/chatgpt82628163-pixel/Skynetwork-voice.git "$VOICE_SRC"
 fi
 update_repo "$VOICE_SRC"
 cmake -S "$VOICE_SRC" -B "$VOICE_SRC/build" >/dev/null
