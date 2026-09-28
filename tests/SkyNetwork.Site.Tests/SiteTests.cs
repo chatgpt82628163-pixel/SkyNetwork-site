@@ -314,7 +314,13 @@ public class FeedTests
         Assert.Contains("\"facility\":\"ATIS\"", json);
         Assert.Contains("\"atisCode\":\"K\"", json);
         Assert.Contains("RWY 24R IN USE", json);
-        Assert.Contains("RWY 24R IN USE", await site.Browser().HtmlAsync("/online"));
+        var online = await site.Browser().HtmlAsync("/online");
+        Assert.Contains("RWY 24R IN USE", online);
+        // An ATIS is connected but is not a controller on a position: it is counted apart.
+        Assert.Contains("Controllers · 1", online);
+        Assert.Contains("ATIS · 1", online);
+        var stats = System.Text.Json.JsonDocument.Parse(await site.Browser().HtmlAsync("/api/v1/stats")).RootElement;
+        Assert.Equal((1, 1), (stats.GetProperty("controllersOnline").GetInt32(), stats.GetProperty("atisOnline").GetInt32()));
     }
 
     [Fact]

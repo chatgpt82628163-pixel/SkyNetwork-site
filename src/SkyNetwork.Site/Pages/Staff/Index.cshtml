@@ -4,7 +4,7 @@
 <h1 style="font-size:30px">@L["Overview"]</h1>
 <div class="kpis">
   <div class="kpi"><b>@Model.Members</b><span>@L["members"]</span></div>
-  <div class="kpi"><b>@Model.Online.Pilots.Count / @Model.Online.Controllers.Count</b><span>@L["pilots / controllers on the air"]</span></div>
+  <div class="kpi"><b>@Model.Online.Pilots.Count / @Model.Online.OnPosition.Count</b><span>@L["pilots / controllers on the air"]</span></div>
   <div class="kpi"><b>@Model.OpenTickets</b><span>@L["open tickets"]</span></div>
   @if (Model.Me.Has(Perm.ApproveRatings)) { <a class="kpi" href="/staff/ratings" style="color:inherit;text-decoration:none"><b>@Model.PendingRatings</b><span>@L["rating requests awaiting approval"]</span></a> }
 </div>

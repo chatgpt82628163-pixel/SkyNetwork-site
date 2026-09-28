@@ -26,6 +26,6 @@ public sealed class IndexModel(NetworkFeed feed, ContentService content, MemberS
         News = content.News(3);
         MemberCount = members.Count();
         (SessionsToday, SessionsMonth) = sessions.SessionCounts();
-        OnPosition = Online.Controllers.Where(c => c.FacilityName is not ("OBS" or "ATIS")).ToList();
+        OnPosition = Online.OnPosition;
     }
 }
