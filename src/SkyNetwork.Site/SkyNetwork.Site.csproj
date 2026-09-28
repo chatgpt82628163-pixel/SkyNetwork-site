@@ -21,6 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The Web SDK already takes *.json as content; drop those so each file is listed once. -->
+    <Content Remove="Nav/**;Aircraft/**" />
     <!-- Bundled waypoint and airway files (see Nav/README.txt). -->
     <Content Include="Nav/**" CopyToOutputDirectory="PreserveNewest" />
     <!-- Aircraft performance profiles (OpenAP, LGPL-3.0; see LICENCES/openap.txt). -->
