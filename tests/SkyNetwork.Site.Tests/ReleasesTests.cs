@@ -115,6 +115,13 @@ public class ReleasesTests
         // Not logged in at all
         var r = await browser.GetAsync("/staff/releases");
         Assert.Equal(HttpStatusCode.NotFound, r.StatusCode);
+
+        // Logged-in staff without Releases permission also cannot access the page
+        var browser2 = site.Browser();
+        long supCid = site.Member("Supervisor User", Ratings.SUP);
+        await browser2.LoginAsync(supCid);
+        var r2 = await browser2.GetAsync("/staff/releases");
+        Assert.Equal(HttpStatusCode.NotFound, r2.StatusCode);
     }
 
     [Fact]

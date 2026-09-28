@@ -362,7 +362,7 @@ public static class ApiEndpoints
                 draft = false,
                 prerelease = false,
                 published_at = r.Created.ToString("O"),
-                body = r.Notes,
+                body = r.NotesEn,
                 assets = new[]
                 {
                     new
@@ -382,6 +382,8 @@ public static class ApiEndpoints
         if (r == null) return Results.NotFound();
         string path = releases.FilePath(r.FileName);
         if (!File.Exists(path)) return Results.NotFound();
+        // Counter is incremented before streaming; partial/reset connections are counted as downloads.
+        // Accepted: the inaccuracy is small and fixing it requires response-completion callbacks.
         releases.IncrementDownloads(r.Id);
         string displayName = ReleaseService.DisplayName(r.Product, r.Version);
         ctx.Response.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment")
