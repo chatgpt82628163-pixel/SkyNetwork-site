@@ -76,6 +76,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<SkyNetwork.Site.Se
 // Cyrillic stays as text in the HTML instead of &#x...; entities.
 builder.Services.Configure<WebEncoderOptions>(o => o.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
 
+var behindProxy = builder.Configuration.GetValue<bool>("Site:BehindProxy");
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
     {
@@ -85,7 +86,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.Cookie.Name = "skynetwork";
         o.Cookie.HttpOnly = true;
         o.Cookie.SameSite = SameSiteMode.Lax;
-        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        // Production is HTTPS behind Caddy; local dev uses plain HTTP.
+        o.Cookie.SecurePolicy = behindProxy ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
         o.ExpireTimeSpan = TimeSpan.FromDays(14);
         o.SlidingExpiration = true;
     });
@@ -122,13 +124,25 @@ app.Services.GetRequiredService<Database>().Migrate();
 if (app.Configuration.GetValue<bool>("Site:BehindProxy"))
 {
     var forwarded = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto };
-    forwarded.KnownNetworks.Clear();
-    forwarded.KnownProxies.Clear();
+    // Trust only the loopback proxy (Caddy on the same machine).
+    forwarded.KnownProxies.Add(System.Net.IPAddress.Loopback);
+    forwarded.KnownProxies.Add(System.Net.IPAddress.IPv6Loopback);
     app.UseForwardedHeaders(forwarded);
 }
 if (!app.Environment.IsDevelopment()) app.UseExceptionHandler("/error/500");
 app.UseStatusCodePagesWithReExecute("/error/{0}");
+
+// Security headers on every response — must be before UseStaticFiles so static assets get headers too.
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    ctx.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    ctx.Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
+    ctx.Response.Headers["Content-Security-Policy"] = "frame-ancestors 'self'";
+    await next();
+});
 app.UseStaticFiles();
+
 app.UseRouting();
 app.UseRateLimiter();
 app.UseCors();

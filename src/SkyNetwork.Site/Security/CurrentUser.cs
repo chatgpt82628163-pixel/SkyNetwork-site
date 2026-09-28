@@ -36,6 +36,17 @@ public sealed class CurrentUser(MemberService members)
             ctx.User = new ClaimsPrincipal(new ClaimsIdentity());
             return;
         }
+        // Reject cookies issued before the last password change.
+        // Accounts that have never changed their password since the security_stamp column was added
+        // have an empty stamp; the check is skipped for them so their existing sessions continue to work.
+        // The protection activates automatically the first time such an account changes its password.
+        var cookieStamp = ctx.User.FindFirstValue(SignIn.StampClaim) ?? "";
+        if (m.SecurityStamp.Length > 0 && cookieStamp != m.SecurityStamp)
+        {
+            await ctx.SignOutAsync();
+            ctx.User = new ClaimsPrincipal(new ClaimsIdentity());
+            return;
+        }
         Member = m;
         Roles = members.RolesOf(cid);
         Permissions = Security.Permissions.For(m.Rating, m.StaffRank, Roles);

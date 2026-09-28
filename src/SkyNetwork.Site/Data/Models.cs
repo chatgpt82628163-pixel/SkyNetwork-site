@@ -27,6 +27,8 @@ public sealed class Member
     public bool EmailVerified { get; set; } = true;
     /// <summary>File name of the profile picture in the uploads, empty when there is none.</summary>
     public string Avatar { get; set; } = "";
+    /// <summary>Changes whenever the password changes; cookies with a stale stamp are rejected.</summary>
+    public string SecurityStamp { get; set; } = "";
     public string? AvatarUrl => Avatar.Length > 0 ? "/uploads/" + Avatar : null;
 
     public string RatingShort => Ratings.Short(Rating);
