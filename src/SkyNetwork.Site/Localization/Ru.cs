@@ -1077,5 +1077,7 @@ public static class Ru
         ["Reset to OpenAP defaults?"] = "Сбросить до данных OpenAP?",
         ["Overrides saved"] = "Изменения сохранены",
         ["Reset to OpenAP defaults"] = "Сброшено до данных OpenAP",
+        // chartfox
+        ["Charts"] = "Карты",
     };
 }

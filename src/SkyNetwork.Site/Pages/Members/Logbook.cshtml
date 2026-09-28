@@ -112,7 +112,14 @@
             @if (Model.Tab != "atc")
             {
               <td class="mono">@(aircraft.Length > 0 ? aircraft : "—")</td>
-              <td class="mono">@(dep.Length > 0 && dest.Length > 0 ? dep + " → " + dest : dep.Length > 0 ? dep : "—")</td>
+              <td class="mono">@{
+                  bool depOk = dep.Length == 4 && System.Text.RegularExpressions.Regex.IsMatch(dep, @"^[A-Z0-9]{4}$");
+                  bool destOk = dest.Length == 4 && System.Text.RegularExpressions.Regex.IsMatch(dest, @"^[A-Z0-9]{4}$");
+                }@if (dep.Length > 0 || dest.Length > 0) {
+                  if (depOk) { <a href="https://chartfox.org/@dep" target="_blank" rel="noopener" class="mono">@dep</a> } else if (dep.Length > 0) { @dep }
+                  if (dep.Length > 0 && dest.Length > 0) { <text> → </text> }
+                  if (destOk) { <a href="https://chartfox.org/@dest" target="_blank" rel="noopener" class="mono">@dest</a> } else if (dest.Length > 0) { @dest }
+                } else { <text>—</text> }</td>
             }
             @if (Model.Tab != "pilot")
             {
