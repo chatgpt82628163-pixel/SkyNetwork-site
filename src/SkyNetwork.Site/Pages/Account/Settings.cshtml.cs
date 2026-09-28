@@ -91,8 +91,9 @@ public sealed class SettingsModel(CurrentUser me, MemberService members, Connect
             // Patch the stamp on the in-memory member to avoid a second Find() round-trip.
             var existing = await HttpContext.AuthenticateAsync();
             var wasPersistent = existing.Succeeded && (existing.Properties?.IsPersistent ?? false);
-            me.SecurityStamp = newStamp;
-            await HttpContext.SignInMemberAsync(me, remember: wasPersistent);
+            var member = me.Member!;
+            member.SecurityStamp = newStamp;
+            await HttpContext.SignInMemberAsync(member, remember: wasPersistent);
             Message = "Password changed. Use the new password to connect to the network too";
         }
         return Page();
