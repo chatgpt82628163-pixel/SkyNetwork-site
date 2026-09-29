@@ -161,7 +161,7 @@
     else
     {
       <div class="ph-cards">
-        @foreach (var e in Model.Events)
+        @foreach (var (e, i) in Model.Events.Select((e, i) => (e, i)))
         {
           <a class="card ph-event" href="/events/@e.Id">
             <span class="card-media @(e.BannerUrlIn(en) == null ? "blank" : e.BannerClasses)">
@@ -172,7 +172,7 @@
               }
               else
               {
-                <img src="/gallery/08-aeroflot-a330-runway.jpg" alt="" loading="lazy" decoding="async">
+                <img src="/gallery/@(new[] { "08-aeroflot-a330-runway", "04-aeroflot-a320-gate", "05-belavia-737-dusk" }[i % 3]).jpg" alt="" loading="lazy" decoding="async">
               }
             </span>
             <span class="ph-event-body">
