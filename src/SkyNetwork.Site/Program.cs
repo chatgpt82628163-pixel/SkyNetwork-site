@@ -162,7 +162,15 @@ app.Use(async (ctx, next) =>
     ctx.Response.Headers["Content-Security-Policy"] = "frame-ancestors 'self'";
     await next();
 });
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    // Browsers keep the files instead of asking again on every page (each question is a round trip, slow when the
+    // network to the server drops packets): a file with its version in the address (asp-append-version) never
+    // changes under it, so a year; fonts, pictures and the map data a day.
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = ctx.Context.Request.Query.ContainsKey("v")
+        ? "public, max-age=31536000, immutable"
+        : "public, max-age=86400",
+});
 
 app.UseRouting();
 app.UseRateLimiter();
