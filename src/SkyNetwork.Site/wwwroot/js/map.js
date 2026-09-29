@@ -236,14 +236,51 @@
   function sectorOf(c) {
     const parts = String(c.callsign).toUpperCase().split('_').slice(0, -1).filter(p => !/^\d+$/.test(p));
     for (let n = parts.length; n > 0; n--) {
-      if (n < parts.length && c.latitude != null) return null;
+      if (n < parts.length && c.latitude != null) break;   // an unknown sub-sector: found by position below
       const key = parts.slice(0, n).join('_');
       const fir = firs.prefixes[key], f = fir && firById.get(fir.b);
       if (f) return { id: fir.b, name: fir.n, features: [f], label: f.properties.lat != null ? [f.properties.lat, f.properties.lon] : null };
       const uir = firs.uirs[key], list = uir ? uir.b.map(id => firById.get(id)).filter(Boolean) : [];
       if (list.length) return { id: key, name: uir.n, features: list, label: null };
     }
+    // A centre named after an airport (LSZH_CTR): the smallest sector the controller sits in, not a circle.
+    if (c.latitude != null && c.longitude != null && /_(CTR|FSS)$/i.test(c.callsign)) {
+      const f = sectorAt(c.latitude, c.longitude);
+      if (f) {
+        const pre = Object.values(firs.prefixes).find(x => x.b === f.properties.id);
+        return { id: f.properties.id, name: pre?.n ?? f.properties.id, features: [f], label: f.properties.lat != null ? [f.properties.lat, f.properties.lon] : null };
+      }
+    }
     return null;
+  }
+
+  // The smallest top-level sector containing a point (ray casting over the GeoJSON rings), cached per position.
+  const sectorAtCache = new Map();
+  function sectorAt(lat, lon) {
+    const key = lat.toFixed(2) + ',' + lon.toFixed(2);
+    if (sectorAtCache.has(key)) return sectorAtCache.get(key);
+    const inRing = ring => {
+      let inside = false;
+      for (let a = 0, b = ring.length - 1; a < ring.length; b = a++) {
+        const [xa, ya] = ring[a], [xb, yb] = ring[b];
+        if ((ya > lat) !== (yb > lat) && lon < (xb - xa) * (lat - ya) / (yb - ya) + xa) inside = !inside;
+      }
+      return inside;
+    };
+    const polys = g => g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    const area = f => polys(f.geometry).reduce((s, p) => {
+      const xs = p[0].map(q => q[0]), ys = p[0].map(q => q[1]);
+      return s + (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
+    }, 0);
+    let best = null, bestArea = Infinity;
+    for (const f of firs.features) {
+      if (!f.properties.top || !f.geometry) continue;
+      if (!polys(f.geometry).some(p => inRing(p[0]) && !p.slice(1).some(inRing))) continue;
+      const a = area(f);
+      if (a < bestArea) { best = f; bestArea = a; }
+    }
+    sectorAtCache.set(key, best);
+    return best;
   }
 
   // Canvas: hundreds of borders draw much faster there than as SVG.
@@ -327,7 +364,7 @@
       layouts.set(code, 'loading');
       fetch(`/api/v1/airports/${code}/layout`).then(r => { if (!r.ok) throw r; return r.json(); })
         .then(d => { layouts.set(code, d); drawLayouts(); })
-        .catch(() => setTimeout(() => { layouts.delete(code); drawLayouts(); }, 90000));   // retry in 90 s (server backoff is 10 min, so the next attempt may still return nothing)
+        .catch(() => { layouts.set(code, 'failed'); drawLayouts(); setTimeout(() => { layouts.delete(code); loadLayouts(); }, 90000); });   // retry in 90 s (server backoff is 10 min, so the next attempt may still return nothing)
     }
     drawLayouts();
   }
@@ -343,7 +380,12 @@
       icon: L.divIcon({ className: '', iconSize: null, html: `<span class="apt-lbl ${kind}">${esc(text)}</span>` }) }).addTo(layoutLayer);
     for (const [code, d] of layouts) {
       const home = airport(code);
-      if (!d || d === 'loading' || !home || !near.contains([home[0], home[1]])) continue;
+      if (!d || !home || !near.contains([home[0], home[1]])) continue;
+      // Not there yet (the first fetch from OpenStreetMap can take a while) or not to be had: say so on the airport.
+      if (d === 'loading' || d === 'failed') {
+        tag([home[0], home[1]], d === 'loading' ? t('Loading the airport diagram…') : t('No airport diagram yet, trying again'), 'twy');
+        continue;
+      }
       // Real widths: metres → pixels at this zoom.
       const mpp = 40075016.686 * Math.cos(home[0] * RAD) / (256 * 2 ** z);
       const px = m => Math.max(1, m / mpp);
@@ -836,8 +878,24 @@
     if (ll) line(ll, { color: colRoute, weight: 1.5, opacity: .3, dashArray: '4 6' });
     else if (dep && arr) line([dep, arr], { color: colRoute, weight: 1.5, opacity: .3, dashArray: '4 6' });
     if (at) {
-      const flown = track.length > 1 ? [...track.map(q => [q[0], q[1]]), at] : ll ? [...ll.slice(0, i), at] : dep ? [dep, at] : null;
-      if (flown && flown.length > 1) line(smooth(flown), { color: colFlown, weight: 2.5 });
+      if (track.length > 1) {
+        // Where the network had no position from the aircraft for a while (the pilot's client sent none), the way it
+        // took is unknown: that piece is only a thin dashed line, not a solid one straight across the grass.
+        const pts = [...track, [at[0], at[1], 0, 0, Date.now() / 1000]];
+        let seg = [[pts[0][0], pts[0][1]]];
+        for (let k = 1; k < pts.length; k++) {
+          const a = pts[k - 1], b = pts[k];
+          if (b[4] - a[4] > 20 && distNm(a, b) > 0.08) {
+            if (seg.length > 1) line(smooth(seg), { color: colFlown, weight: 2.5 });
+            line([[a[0], a[1]], [b[0], b[1]]], { color: colFlown, weight: 1.5, opacity: .6, dashArray: '2 6' });
+            seg = [[b[0], b[1]]];
+          } else seg.push([b[0], b[1]]);
+        }
+        if (seg.length > 1) line(smooth(seg), { color: colFlown, weight: 2.5 });
+      } else {
+        const flown = ll ? [...ll.slice(0, i), at] : dep ? [dep, at] : null;
+        if (flown && flown.length > 1) line(smooth(flown), { color: colFlown, weight: 2.5 });
+      }
       if (ll) line([at, ...ll.slice(i)], { color: colRoute, weight: 2 });
       else if (arr) line([at, arr], { color: colRoute, weight: 2, dashArray: '6 6' });
     }
