@@ -23,7 +23,7 @@
   <script src="~/js/theme.js" asp-append-version="true"></script>
   @await RenderSectionAsync("Head", required: false)
 </head>
-<body>
+<body class="@(ViewData["HeaderOverHero"] is true ? "over-hero" : null)">
   <div id="scroll-top" aria-hidden="true"></div>
   <header class="site-header" id="header">
     <div class="wrap">

@@ -14,7 +14,7 @@ public class LanguageAndThemeTests
         var c = site.Browser();
         var en = await c.HtmlAsync("/");
         Assert.Contains("<html lang=\"en\"", en);
-        Assert.Contains("One sky for pilots and controllers", en);
+        Assert.Contains("Fly with live air traffic control", en);
 
         var r = await c.GetAsync("/lang/ru?r=%2Fonline");
         Assert.Equal(HttpStatusCode.Redirect, r.StatusCode);
@@ -23,11 +23,11 @@ public class LanguageAndThemeTests
 
         var ru = await c.HtmlAsync("/");
         Assert.Contains("<html lang=\"ru\"", ru);
-        Assert.Contains("Одно небо для пилотов и диспетчеров", ru);
+        Assert.Contains("Летайте с живыми диспетчерами", ru);
         Assert.Contains("Такой страницы нет", await (await c.GetAsync("/no-such-page")).Content.ReadAsStringAsync());
 
         await c.GetAsync("/lang/en");
-        Assert.Contains("One sky for pilots and controllers", await c.HtmlAsync("/"));
+        Assert.Contains("Fly with live air traffic control", await c.HtmlAsync("/"));
     }
 
     [Fact]

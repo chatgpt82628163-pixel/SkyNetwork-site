@@ -4,222 +4,166 @@
     var s = Model.Online;
     string N(long n) => n.ToString("N0", L.Culture);
     bool en = !L.IsRu;
-    var next = Model.Events.FirstOrDefault();
+    ViewData["HeaderOverHero"] = true;
+    // Members' own screenshots (wwwroot/gallery), with what is in the frame.
+    (string File, string Caption)[] shots =
+    [
+        ("09-aeroflot-777-above-clouds", "Boeing 777 · Aeroflot"),
+        ("03-s7-a320-above-clouds", "Airbus A320 · S7 Airlines"),
+        ("05-belavia-737-dusk", "Boeing 737 · Belavia"),
+        ("02-aeroflot-a330-sunlit", "Airbus A330 · Aeroflot"),
+        ("04-aeroflot-a320-gate", "Airbus A320 · Aeroflot"),
+        ("01-ana-a380-sunset", "Airbus A380 · ANA"),
+        ("08-aeroflot-a330-runway", "Airbus A330 · Aeroflot"),
+    ];
 }
 @section Head {
+  <link rel="stylesheet" href="~/lib/leaflet/leaflet.css">
   <link rel="stylesheet" href="~/css/home.css" asp-append-version="true">
-  <script>if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) document.documentElement.classList.add('motion');</script>
+  <link rel="preload" as="image" href="/gallery/07-a380-cockpit-dawn.jpg" fetchpriority="high">
 }
-<div class="hm">
+<div class="ph">
 
-@* ---- Hero: the idea in one line, the logo sphere with its orbits, who is on the network right now ---- *@
-<section class="hm-hero" aria-labelledby="hero-h">
-  <svg class="hm-hero-orbits" viewBox="0 0 640 640" fill="none" aria-hidden="true" focusable="false">
-    <ellipse cx="320" cy="320" rx="280" ry="108" stroke="currentColor" stroke-width="1" stroke-dasharray="7 10" opacity=".26"/>
-    <ellipse cx="320" cy="320" rx="220" ry="80" stroke="currentColor" stroke-width="1" stroke-dasharray="5 9" opacity=".18" transform="rotate(25 320 320)"/>
-    <ellipse cx="320" cy="320" rx="300" ry="140" stroke="currentColor" stroke-width=".8" stroke-dasharray="6 12" opacity=".12" transform="rotate(-15 320 320)"/>
-  </svg>
-  <div class="wrap hm-hero-in">
-    <div class="hm-hero-text" data-reveal-group>
-      <div class="hm-eyebrow" data-reveal><span class="hm-eyebrow-dot" aria-hidden="true"></span>@L["Virtual aviation network"]</div>
-      <h1 id="hero-h" class="hm-h1" data-reveal>@L["One sky for pilots and controllers"]</h1>
-      <p class="hm-lead" data-reveal>@L["On SkyNetwork pilots fly in MSFS, X-Plane and Prepar3D while controllers guide them from the ground — for real, on the radio and by the rules."]</p>
-      <div class="hm-actions" data-reveal>
-        @if (Me.IsSignedIn)
-        {
-          <a class="btn btn-primary btn-pill" href="/flightplan">@L["File a flight plan"]</a>
-          <a class="hm-btn-soft" href="/map">@L["Live map"]</a>
-        }
-        else
-        {
-          <a class="btn btn-primary btn-pill" href="/register">@L["Register"]</a>
-          <a class="hm-btn-soft" href="/docs">@L["Getting started"]</a>
-        }
-      </div>
+@* ---- First screen: a member's flight at dawn, the promise, who is on the air ---- *@
+<section class="ph-hero" aria-labelledby="hero-h">
+  <img class="ph-hero-img" src="/gallery/07-a380-cockpit-dawn.jpg" alt="" fetchpriority="high" decoding="async">
+  <div class="wrap ph-hero-in">
+    <h1 id="hero-h">@L["Fly with live air traffic control"]</h1>
+    <p class="ph-lead">@L["A Russian-speaking network for MSFS, X-Plane and Prepar3D pilots and for controllers: voice on the frequencies, flight plans and real procedures."]</p>
+    <div class="ph-actions">
+      @if (Me.IsSignedIn)
+      {
+        <a class="btn btn-primary btn-pill" href="/flightplan">@L["File a flight plan"]</a>
+        <a class="btn btn-pill ph-btn-light" href="/map">@L["Live map"]</a>
+      }
+      else
+      {
+        <a class="btn btn-primary btn-pill" href="/register">@L["Register"]</a>
+        <a class="btn btn-pill ph-btn-light" href="/docs/software">@L["Download SkyPilot"]</a>
+      }
     </div>
-
-    <div class="hm-vis" data-reveal style="--i:2">
-      <div class="hm-sphere" data-tilt>
-        <div class="hm-halo" aria-hidden="true"></div>
-        <svg class="hm-orbit" viewBox="0 0 412 412" fill="none" aria-hidden="true" focusable="false">
-          <path id="hm-o1" d="M32 206a174 66 0 1 0 348 0a174 66 0 1 0 -348 0" stroke="currentColor" stroke-width="1.2" stroke-dasharray="7 9" opacity=".5"/>
-          <path id="hm-o2" d="M10 206a196 104 0 1 0 392 0a196 104 0 1 0 -392 0" stroke="currentColor" stroke-width="1" stroke-dasharray="6 11" opacity=".32" transform="rotate(42 206 206)"/>
-          <g class="hm-craft">
-            <circle r="5"><animateMotion dur="26s" repeatCount="indefinite"><mpath href="#hm-o1"/></animateMotion></circle>
-            <circle r="4" opacity=".8"><animateMotion dur="26s" begin="-13s" repeatCount="indefinite"><mpath href="#hm-o1"/></animateMotion></circle>
-            <g transform="rotate(42 206 206)"><circle r="4" opacity=".7"><animateMotion dur="38s" begin="-9s" repeatCount="indefinite"><mpath href="#hm-o2"/></animateMotion></circle></g>
-          </g>
-        </svg>
-        <span class="hm-mark" role="img" aria-label="SkyNetwork"></span>
-      </div>
-      <a class="hm-live" href="/online" data-live>
-        @if (s.Available)
-        {
-          <span class="hm-live-top"><span class="hm-live-dot" aria-hidden="true"></span>@L["Online now"]</span>
-          <span class="hm-live-row">
-            <span class="hm-live-item"><b data-live-count="pilots">@N(s.Pilots.Count)</b><span>@L["Pilots"]</span></span>
-            <span class="hm-live-item"><b data-live-count="controllers">@N(Model.OnPosition.Count)</b><span>@L["Controllers"]</span></span>
-          </span>
-        }
-        else
-        {
-          <span class="hm-live-top"><span class="hm-live-dot off" aria-hidden="true"></span>@L["The server is not responding right now"]</span>
-        }
-      </a>
-    </div>
+    <a class="ph-live" href="/online">
+      <span class="dot@(s.Available && (s.Pilots.Count + Model.OnPosition.Count) > 0 ? "" : " off")" aria-hidden="true"></span>
+      @L["Online now"]:
+      <b data-live-count="pilots">@(s.Available ? N(s.Pilots.Count) : "—")</b> @L["pilots"] ·
+      <b data-live-count="controllers">@(s.Available ? N(Model.OnPosition.Count) : "—")</b> @L["controllers"]
+    </a>
   </div>
+  <span class="ph-credit">Airbus A380 · @L["a member's screenshot"]</span>
 </section>
 
-@* ---- The network in numbers ---- *@
-<section class="hm-stats" aria-label="@L["The network in numbers"]">
-  <div class="hm-stats-row" data-reveal-group>
-    <div class="hm-stat" data-reveal><b data-count="@Model.MemberCount">@N(Model.MemberCount)</b><span>@L["Members"]</span></div>
-    <div class="hm-stat" data-reveal><b data-count="@Model.SessionsMonth">@N(Model.SessionsMonth)</b><span>@L["Sessions in 30 days"]</span></div>
-    <div class="hm-stat" data-reveal><b data-count="@Model.SessionsToday">@N(Model.SessionsToday)</b><span>@L["Sessions today"]</span></div>
-    <div class="hm-stat" data-reveal><b data-count="@Model.UpcomingCount">@N(Model.UpcomingCount)</b><span>@L["Upcoming events"]</span></div>
-  </div>
-</section>
-
-@* ---- What the network is made of ---- *@
-<section class="hm-sec" aria-labelledby="features-h">
+@* ---- The network, live ---- *@
+<section class="ph-sec" aria-labelledby="map-h">
   <div class="wrap">
-    <div class="hm-head" data-reveal-group>
-      <div class="hm-eyebrow" data-reveal><span class="hm-eyebrow-dot" aria-hidden="true"></span>@L["Software and services"]</div>
-      <h2 id="features-h" data-reveal>@L["Everything is our own, from the client to the server"]</h2>
-      <p data-reveal>@L["Our own network server, voice server, pilot client and controller radar: one sky, nothing borrowed."]</p>
-    </div>
-    <div class="hm-bento" data-reveal-group>
-      <a class="hm-card hm-card-blue s7" href="/docs/software" data-reveal>
-        <span class="hm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 12.5 21 4l-4.5 16-5-6.5z"/><path d="m11.5 13.5 9.5-9.5"/></svg></span>
-        <h3>@L["SkyPilot, the pilot client"]</h3>
-        <p>@L["Finds your simulator by itself, picks up your flight plan from the website (SimBrief import included) and has the radio built in. Nothing else to install."]</p>
-        <span class="hm-tags"><span>MSFS 2020</span><span>MSFS 2024</span><span>X-Plane 11/12</span><span>Prepar3D v4–v6</span></span>
-        <svg class="hm-plane-deco" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2c.8 0 1.3.7 1.3 1.6v5.6l7.7 4.6v2l-7.7-2.3v4.4l2.2 1.7v1.6L12 20.2l-3.5 1v-1.6l2.2-1.7v-4.4L3 15.8v-2l7.7-4.6V3.6C10.7 2.7 11.2 2 12 2z"/></svg>
-      </a>
-      <a class="hm-card s5" href="/docs/software" data-reveal>
-        <span class="hm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12 18 6"/></svg></span>
-        <h3>@L["Network-ATC, the controller radar"]</h3>
-        <p>@L["A full radar: EuroScope sector files, handoffs, SID and STAR, departure and arrival lists, STCA conflict alerts and ATIS."]</p>
-        <span class="hm-radar" aria-hidden="true">
-          <svg viewBox="0 0 280 100" preserveAspectRatio="xMidYMid slice" focusable="false">
-            <circle cx="140" cy="50" r="42"/><circle cx="140" cy="50" r="26"/><circle cx="140" cy="50" r="10"/>
-            <path class="sector" d="M100 8 140 50 180 8"/>
-            <g class="sweep"><path d="M140 50 L140 6 A44 44 0 0 1 171 19 Z"/></g>
-            <g class="blips"><circle cx="172" cy="24" r="3"/><circle cx="122" cy="38" r="2.5"/><circle cx="162" cy="70" r="2.5"/><circle cx="108" cy="64" r="2"/></g>
-            <text x="177" y="22">AFL123</text><text x="86" y="36">SBI456</text>
-          </svg>
-        </span>
-      </a>
-      <div class="hm-card hm-card-sky s4" data-reveal>
-        <span class="hm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg></span>
-        <h3>@L["Voice on the frequencies"]</h3>
-        <p>@L["Built into both programs: tune the frequency, press PTT and talk. A weak signal crackles, like on a real radio."]</p>
-        <span class="hm-wave" aria-hidden="true">@for (int i = 0; i < 22; i++) { <i style="--k:@i;--h:@(8 + i * 37 % 26)px"></i> }</span>
+    <div class="ph-head">
+      <div>
+        <h2 id="map-h">@L["The whole network on one map"]</h2>
+        <p>@L["Who is flying and who is on position, updated every five seconds."]</p>
       </div>
-      <div class="hm-card s4" data-reveal>
-        <span class="hm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="5" rx="2"/><rect x="3" y="10" width="18" height="5" rx="2"/><rect x="3" y="17" width="18" height="4" rx="2"/><path d="M7 5.5h.01M7 12.5h.01"/></svg></span>
-        <h3>@L["Our own infrastructure"]</h3>
-        <p>@L["The network server, the voice server and this website are run by the team. Both programs update themselves when they start."]</p>
-        <span class="hm-tags soft"><span>RU · EN</span><span>API</span></span>
-      </div>
-      <a class="hm-card s4" href="/docs/ratings" data-reveal>
-        <span class="hm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V7z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
-        <h3>@L["Events and ratings"]</h3>
-        <p>@L["Regular events with staffed positions, position bookings, and a clear path for controllers from OBS to C3 through training and exams."]</p>
-      </a>
+      <a class="chev-link" href="/map">@L["Open the map"]<partial name="_Chevron" /></a>
     </div>
+    <div class="ph-map">
+      <div id="map" data-compact="1" data-text="@MapTexts.Json(L)" data-signed-in="0" aria-label="@L["Traffic map"]"></div>
+    </div>
+    <dl class="ph-nums">
+      <div><dt>@L["Members"]</dt><dd>@N(Model.MemberCount)</dd></div>
+      <div><dt>@L["Sessions in 30 days"]</dt><dd>@N(Model.SessionsMonth)</dd></div>
+      <div><dt>@L["Sessions today"]</dt><dd>@N(Model.SessionsToday)</dd></div>
+      <div><dt>@L["Upcoming events"]</dt><dd>@N(Model.UpcomingCount)</dd></div>
+    </dl>
+  </div>
+</section>
+
+@* ---- The two programs ---- *@
+<section class="ph-sec ph-soft" aria-labelledby="pilot-h">
+  <div class="wrap ph-row">
+    <div class="ph-text">
+      <p class="eyebrow">@L["For pilots"]</p>
+      <h2 id="pilot-h">SkyPilot</h2>
+      <p class="ph-sub">@L["Start the simulator, type your callsign and you are on the air. SkyPilot finds the simulator and the network by itself."]</p>
+      <ul class="ph-points">
+        <li>MSFS 2020 · MSFS 2024 · X-Plane 11/12 · Prepar3D v4–v6</li>
+        <li>@L["Voice on the frequencies is built in"]</li>
+        <li>@L["Your flight plan from the website or SimBrief"]</li>
+        <li>@L["Controllers nearby, grouped by position, with frequencies"]</li>
+      </ul>
+      <a class="btn btn-primary btn-pill" href="/docs/software">@L["Download SkyPilot"]</a>
+    </div>
+    <figure class="ph-shot">
+      <img src="/img/skypilot.jpg" alt="@L["SkyPilot window: radios, messages and controllers nearby"]" loading="lazy" decoding="async" width="1247" height="730">
+    </figure>
+  </div>
+  <div class="wrap ph-row ph-row-flip">
+    <div class="ph-text">
+      <p class="eyebrow">@L["For controllers"]</p>
+      <h2>Network-ATC</h2>
+      <p class="ph-sub">@L["A full radar: EuroScope sector files, handoffs, SID and STAR, departure and arrival lists, STCA conflict alerts and ATIS."]</p>
+      <ul class="ph-points">
+        <li>@L["Voice on the frequencies is built in"]</li>
+        <li>@L["Position bookings and events with staffed positions"]</li>
+        <li>@L["A clear path from observer to controller through training"]</li>
+      </ul>
+      <a class="btn btn-pill" href="/docs/ratings">@L["About ratings"]</a>
+    </div>
+    <figure class="ph-shot ph-photo">
+      <img src="/gallery/06-aeroflot-777-apron.jpg" alt="" loading="lazy" decoding="async" width="1920" height="1080">
+    </figure>
+  </div>
+</section>
+
+@* ---- Members' flights ---- *@
+<section class="ph-sec" aria-labelledby="shots-h">
+  <div class="wrap ph-head">
+    <div>
+      <h2 id="shots-h">@L["Flown on SkyNetwork"]</h2>
+      <p>@L["Screenshots our members sent from their flights."]</p>
+    </div>
+  </div>
+  <div class="ph-strip" tabindex="0" aria-label="@L["Flown on SkyNetwork"]">
+    @foreach (var (file, caption) in shots)
+    {
+      <figure>
+        <img src="/gallery/@(file).jpg" alt="@caption" loading="lazy" decoding="async" width="1920" height="1080">
+        <figcaption>@caption</figcaption>
+      </figure>
+    }
   </div>
 </section>
 
 @* ---- Getting started ---- *@
-<section class="hm-sec hm-sky" aria-labelledby="start-h">
+<section class="ph-sec" aria-labelledby="start-h">
   <div class="wrap">
-    <div class="hm-head" data-reveal-group>
-      <div class="hm-eyebrow" data-reveal><span class="hm-eyebrow-dot" aria-hidden="true"></span>@L["First flight"]</div>
-      <h2 id="start-h" data-reveal>@L["Three steps to the air"]</h2>
-      <p data-reveal>@L["Three steps, half an hour, and you are on frequency."]</p>
+    <div class="ph-head">
+      <div>
+        <h2 id="start-h">@L["Your first flight in half an hour"]</h2>
+      </div>
+      <a class="chev-link" href="/docs">@L["Getting started"]<partial name="_Chevron" /></a>
     </div>
-    <ol class="hm-steps" data-reveal-group>
-      <li class="hm-step" data-reveal>
-        <span class="hm-step-n" aria-hidden="true">1</span>
-        <h3>@L["Register"]</h3>
-        <p>@L["Confirm your email and you get a CID, your member number: with it and your password you sign in to the website and the network."]</p>
-      </li>
-      <li class="hm-step" data-reveal>
-        <span class="hm-step-n" aria-hidden="true">2</span>
-        <h3>@L["Install the software"]</h3>
-        <p>@L["Pilots use SkyPilot for MSFS 2020/2024, X-Plane 11/12 and Prepar3D v4–v6, controllers use the Network-ATC radar."] <a href="/docs/software">@L["Download"]</a></p>
-      </li>
-      <li class="hm-step" data-reveal>
-        <span class="hm-step-n" aria-hidden="true">3</span>
-        <h3>@L["Get on the air"]</h3>
-        <p>@L["File a flight plan on the website and connect. Controllers need a rating —"] <a href="/docs/ratings">@L["about ratings"]</a>.</p>
-      </li>
+    <ol class="ph-steps">
+      <li><h3>@L["Register"]</h3><p>@L["You get a CID: your number on the network."]</p></li>
+      <li><h3>@L["Install SkyPilot"]</h3><p>@L["It connects to the network by itself: no server to type."]</p></li>
+      <li><h3>@L["File a plan and connect"]</h3><p>@L["On the website or from SimBrief, then tune the controller's frequency and call."]</p></li>
     </ol>
   </div>
 </section>
 
-@* ---- Right now on the network ---- *@
-<section class="hm-pulse" aria-label="@L["Right now on the network"]">
-  <div class="wrap hm-pulse-row" data-reveal-group>
-    <div class="hm-pulse-cell" data-reveal>
-      <span class="hm-pulse-lbl">@L["Pilots in the air"]</span>
-      <b class="hm-pulse-val" data-live-count="pilots">@(s.Available ? N(s.Pilots.Count) : "—")</b>
-      <a class="hm-pulse-link" href="/map">@L["Open the map"]<partial name="_Chevron" /></a>
-    </div>
-    <div class="hm-pulse-cell" data-reveal>
-      <span class="hm-pulse-lbl">@L["Controllers on position"]</span>
-      <b class="hm-pulse-val" data-live-count="controllers">@(s.Available ? N(Model.OnPosition.Count) : "—")</b>
-      @if (Model.OnPosition.Count > 0)
-      {
-        <span class="hm-pulse-calls" data-live-calls>@string.Join(" · ", Model.OnPosition.Take(4).Select(c => c.Callsign))</span>
-        <a class="hm-pulse-link" href="/online">@L["Everyone online"]<partial name="_Chevron" /></a>
-      }
-      else
-      {
-        <span class="hm-pulse-calls" data-live-calls></span>
-        <a class="hm-pulse-link" href="/bookings">@L["Book a position"]<partial name="_Chevron" /></a>
-      }
-    </div>
-    <div class="hm-pulse-cell" data-reveal>
-      <span class="hm-pulse-lbl">@L["Next event"]</span>
-      @if (next != null)
-      {
-        <a class="hm-next" href="/events/@next.Id">
-          <span class="hm-next-date">@Format.Span(next.Start, next.End)</span>
-          <span class="hm-next-name">@next.TitleIn(en)</span>
-          @if (next.Airports.Length > 0) { <span class="hm-next-apts mono">@next.Airports</span> }
-        </a>
-      }
-      else
-      {
-        <span class="hm-pulse-calls">@L["No events planned yet."]</span>
-      }
-    </div>
-  </div>
-</section>
-
-@* ---- Events ---- *@
-<section class="hm-sec" id="events" aria-labelledby="events-h">
+@* ---- Events and news ---- *@
+<section class="ph-sec" aria-labelledby="events-h">
   <div class="wrap">
-    <div class="hm-head" data-reveal-group>
-      <div class="hm-eyebrow" data-reveal><span class="hm-eyebrow-dot" aria-hidden="true"></span>@L["Community"]</div>
-      <h2 id="events-h" data-reveal>@L["Upcoming events"]</h2>
-      <p data-reveal>@L["Staffed positions, busy skies, real procedures."]</p>
+    <div class="ph-head">
+      <div><h2 id="events-h">@L["Upcoming events"]</h2></div>
+      <a class="chev-link" href="/events">@L["All events"]<partial name="_Chevron" /></a>
     </div>
     @if (Model.Events.Count == 0)
     {
-      <div class="hm-empty" data-reveal>
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-        <p>@L["No events planned yet."]</p>
-      </div>
+      <p class="ph-none">@L["No events planned yet."]</p>
     }
     else
     {
-      <div class="hm-cards" data-reveal-group>
+      <div class="ph-cards">
         @foreach (var e in Model.Events)
         {
-          <a class="card hm-ev" href="/events/@e.Id" data-reveal>
+          <a class="card ph-event" href="/events/@e.Id">
             <span class="card-media @(e.BannerUrlIn(en) == null ? "blank" : e.BannerClasses)">
               @if (e.BannerUrlIn(en) is { } banner)
               {
@@ -228,81 +172,56 @@
               }
               else
               {
-                <svg class="arc" viewBox="0 0 320 180" aria-hidden="true" focusable="false"><path d="M40 140 Q160 30 280 140" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 6"/><circle cx="40" cy="140" r="3" fill="currentColor"/><circle cx="280" cy="140" r="3" fill="currentColor"/></svg>
+                <img src="/gallery/08-aeroflot-a330-runway.jpg" alt="" loading="lazy" decoding="async">
               }
             </span>
-            <div class="card-body">
-              <span class="date-chip">@Format.Span(e.Start, e.End)</span>
-              <h3>@e.TitleIn(en)</h3>
-              <p>@e.SummaryIn(en)</p>
-              @if (e.Airports.Length > 0) { <span class="mono airports">@e.Airports</span> }
-            </div>
+            <span class="ph-event-body">
+              <span class="ph-when">@Format.Span(e.Start, e.End)</span>
+              <b>@e.TitleIn(en)</b>
+              <span class="muted">@e.SummaryIn(en)</span>
+              @if (e.Airports.Length > 0) { <span class="mono muted">@e.Airports</span> }
+            </span>
           </a>
         }
       </div>
     }
-    <p class="hm-more" data-reveal><a class="chev-link" href="/events">@L["All events"]<partial name="_Chevron" /></a></p>
-  </div>
-</section>
 
-@* ---- News ---- *@
-<section class="hm-sec hm-sky" id="news" aria-labelledby="news-h">
-  <div class="wrap">
-    <div class="hm-head" data-reveal-group>
-      <div class="hm-eyebrow" data-reveal><span class="hm-eyebrow-dot" aria-hidden="true"></span>@L["News"]</div>
-      <h2 id="news-h" data-reveal>@L["What changed on the network."]</h2>
+    <div class="ph-head ph-head-gap">
+      <div><h2>@L["News"]</h2></div>
+      <a class="chev-link" href="/news">@L["All news"]<partial name="_Chevron" /></a>
     </div>
     @if (Model.News.Count == 0)
     {
-      <div class="hm-empty" data-reveal>
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h13a1 1 0 0 1 1 1v12a2 2 0 0 0 4 0V9h-4"/><path d="M4 5v13a2 2 0 0 0 2 2h14"/><path d="M8 9h6M8 13h6"/></svg>
-        <p>@L["No news yet."]</p>
-      </div>
+      <p class="ph-none">@L["No news yet."]</p>
     }
     else
     {
-      <div class="hm-cards" data-reveal-group>
+      <ul class="ph-news">
         @foreach (var n in Model.News)
         {
-          <a class="card hm-ev" href="/news/@n.Id" data-reveal>
-            @if (n.BannerUrlIn(en) is { } thumb)
-            {
-              <span class="card-media @n.BannerClasses">@if (n.BannerWhole) { <img class="banner-fill" src="@thumb" alt="" loading="lazy" decoding="async"> }<img src="@thumb" alt="" loading="lazy" decoding="async"></span>
-            }
-            <div class="card-body">
-              <span class="card-date">@Format.Date(n.Created)</span>
-              <h3>@n.TitleIn(en)</h3>
-              <p>@n.ExcerptIn(en, 160)</p>
-            </div>
-          </a>
+          <li>
+            <span class="ph-when">@Format.Date(n.Created)</span>
+            <a href="/news/@n.Id">@n.TitleIn(en)</a>
+            <span class="muted">@n.ExcerptIn(en, 150)</span>
+          </li>
         }
-      </div>
+      </ul>
     }
-    <p class="hm-more" data-reveal><a class="chev-link" href="/news">@L["All news"]<partial name="_Chevron" /></a></p>
   </div>
 </section>
 
-@* ---- Call to action ---- *@
-<section class="hm-cta" aria-labelledby="cta-h">
-  <span class="hm-cta-glow" aria-hidden="true"></span>
-  <span class="hm-cta-mark" aria-hidden="true"></span>
-  <div class="wrap hm-cta-in" data-reveal-group>
-    <h2 id="cta-h" data-reveal>@L["Your first flight starts here."]</h2>
+@* ---- The last word, over a sunset flight ---- *@
+<section class="ph-end" aria-labelledby="end-h">
+  <img class="ph-end-img" src="/gallery/01-ana-a380-sunset.jpg" alt="" loading="lazy" decoding="async">
+  <div class="wrap ph-end-in">
+    <h2 id="end-h">@L["See you on the frequency."]</h2>
     @if (Me.IsSignedIn)
     {
-      <p data-reveal>@L["File a flight plan, connect, and the sky is yours."]</p>
-      <div class="hm-cta-btns" data-reveal>
-        <a class="hm-btn-white" href="/flightplan">@L["File a flight plan"]</a>
-        <a class="hm-btn-line" href="/map">@L["Open the map"]</a>
-      </div>
+      <a class="btn btn-primary btn-pill" href="/flightplan">@L["File a flight plan"]</a>
     }
     else
     {
-      <p data-reveal>@L["Register, install the software and get on the air."]</p>
-      <div class="hm-cta-btns" data-reveal>
-        <a class="hm-btn-white" href="/register">@L["Register"]</a>
-        <a class="hm-btn-line" href="/map">@L["Open the map"]</a>
-      </div>
+      <a class="btn btn-primary btn-pill" href="/register">@L["Register"]</a>
     }
   </div>
 </section>
@@ -310,5 +229,7 @@
 </div>
 
 @section Scripts {
-  <script src="~/js/home.js" asp-append-version="true" onerror="document.documentElement.classList.remove('motion')"></script>
+  <script src="~/lib/leaflet/leaflet.js"></script>
+  <script src="~/js/map.js" asp-append-version="true"></script>
+  <script src="~/js/home.js" asp-append-version="true"></script>
 }
