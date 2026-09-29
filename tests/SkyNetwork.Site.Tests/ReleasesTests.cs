@@ -298,9 +298,9 @@ public class ReleasesTests
         using var site = new SiteFactory();
         var browser = site.Browser();
 
-        // Without any published release
+        // Without a release on the site the button leads to the GitHub releases
         var html = await browser.HtmlAsync("/docs/software");
-        Assert.Contains("coming soon", html);
+        Assert.Contains("github.com/chatgpt82628163-pixel/SkyPilot/releases/latest", html);
 
         // Publish one
         await LoginAdminAsync(site, browser);
