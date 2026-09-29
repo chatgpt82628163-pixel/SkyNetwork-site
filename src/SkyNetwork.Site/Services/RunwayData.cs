@@ -83,7 +83,8 @@ public sealed class RunwayData(IWebHostEnvironment env, ILogger<RunwayData> log)
     /// </summary>
     public async Task<(string? Json, bool Approx)> LayoutAsync(AirportLayout layouts, string icao, TimeSpan wait, CancellationToken ct)
     {
-        var fetch = layouts.GetAsync(icao, CancellationToken.None);
+        // On its own task: whatever GetAsync does before its first real wait must not hold up the answer.
+        var fetch = Task.Run(() => layouts.GetAsync(icao, CancellationToken.None));
         try
         {
             if (await Task.WhenAny(fetch, Task.Delay(wait, ct)) == fetch && await fetch is { } json) return (json, false);
