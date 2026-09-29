@@ -363,7 +363,12 @@
       if (layouts.has(code)) continue;
       layouts.set(code, 'loading');
       fetch(`/api/v1/airports/${code}/layout`).then(r => { if (!r.ok) throw r; return r.json(); })
-        .then(d => { layouts.set(code, d); drawLayouts(); })
+        .then(d => {
+          layouts.set(code, d);
+          drawLayouts();
+          // Runways only, while OpenStreetMap is still being asked: look for the full diagram again in a minute.
+          if (d.approx) setTimeout(() => { if (layouts.get(code) === d) { layouts.delete(code); loadLayouts(); } }, 60000);
+        })
         .catch(() => { layouts.set(code, 'failed'); drawLayouts(); setTimeout(() => { layouts.delete(code); loadLayouts(); }, 90000); });   // retry in 90 s (server backoff is 10 min, so the next attempt may still return nothing)
     }
     drawLayouts();
@@ -396,6 +401,7 @@
         L.polyline(tw.line, { ...shape, color: col.taxiway, weight: px(tw.width), lineCap: 'round', lineJoin: 'round' }).addTo(layoutLayer);
       for (const r of d.runways)
         L.polyline(r.line, { ...shape, color: col.runway, weight: px(r.width), lineCap: 'butt' }).addTo(layoutLayer);
+      if (d.approx) tag([home[0], home[1]], t('Approximate diagram: runways only'), 'twy');
 
       // A runway number sits at the end aircraft roll from on that heading (06 at the south-west end of 06/24);
       // OpenStreetMap draws runways in either direction, so the order of the ends is checked against the heading.

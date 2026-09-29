@@ -144,11 +144,13 @@ public static class ApiEndpoints
             return Results.Ok(plan);
         }).RequireRateLimiting("planner");
 
-        v1.MapGet("/airports/{icao}/layout", async (string icao, AirportLayout layouts, HttpContext ctx) =>
+        // The OpenStreetMap diagram; while it is still being fetched (or cannot be), the runways from OurAirports
+        // ("approx": true, not cached by the browser, so the real one is picked up later).
+        v1.MapGet("/airports/{icao}/layout", async (string icao, AirportLayout layouts, RunwayData runways, HttpContext ctx) =>
         {
-            string? json = await layouts.GetAsync(icao, ctx.RequestAborted);
+            var (json, approx) = await runways.LayoutAsync(layouts, icao, TimeSpan.FromSeconds(3), ctx.RequestAborted);
             if (json == null) return Results.StatusCode(StatusCodes.Status502BadGateway);
-            ctx.Response.Headers.CacheControl = "public, max-age=86400";
+            ctx.Response.Headers.CacheControl = approx ? "no-store" : "public, max-age=86400";
             return Results.Text(json, "application/json");
         });
 

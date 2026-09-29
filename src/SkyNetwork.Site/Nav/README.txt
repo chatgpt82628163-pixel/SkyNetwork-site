@@ -12,3 +12,8 @@ Files (all built by tools/airac-import/build.js, do not edit by hand):
   airac/cycle.json      cycle metadata
 
 New cycle: node tools/airac-import/build.js <workbook.xlsx>
+
+runways.csv.gz — runways of the known airports from OurAirports (public domain,
+https://davidmegginson.github.io/ourairports-data/runways.csv), for approximate airport diagrams and the
+planner's runway choice while the OpenStreetMap diagram is not there. Rebuild:
+  node tools/runways/build.js <runways.csv>

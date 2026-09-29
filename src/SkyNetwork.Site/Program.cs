@@ -75,6 +75,7 @@ builder.Services.AddHttpClient("overpass", c =>
     c.DefaultRequestHeaders.UserAgent.ParseAdd("SkyNetworkSite/1.0 (+https://github.com/chatgpt82628163-pixel/SkyNetwork-site)");
 });
 builder.Services.AddSingleton<AirportLayout>();
+builder.Services.AddSingleton<RunwayData>();
 builder.Services.AddSingleton<AirportLayoutWarmup>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AirportLayoutWarmup>());
 builder.Services.AddSingleton<UploadStore>();

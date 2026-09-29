@@ -18,7 +18,7 @@ public static class MapTexts
         "Online for {0}", "Online for", "Frequency", "Rating", "Sector:", "Airport:",
         "none", "no data", "Loading…", "Controllers", "nobody", "Departures", "Arrivals", "Not found: {0}", "Controller info",
         "Add to friends", "Remove from friends", "Sign in to add friends", "Friends online",
-        "Charts", "Loading the airport diagram…", "No airport diagram yet, trying again",
+        "Charts", "Loading the airport diagram…", "No airport diagram yet, trying again", "Approximate diagram: runways only",
     ];
 
     public static string Json(Lang l) => JsonSerializer.Serialize(Keys.ToDictionary(k => k, k => l[k]));

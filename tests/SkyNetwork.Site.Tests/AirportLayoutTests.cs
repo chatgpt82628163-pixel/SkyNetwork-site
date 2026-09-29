@@ -27,6 +27,31 @@ public class AirportLayoutTests
     }
 
     [Fact]
+    public async Task ApproximateDiagram_FromOurAirports_WhileOpenStreetMapIsSlow()
+    {
+        using var site = new SiteFactory();
+        var runways = site.Get<RunwayData>();
+        Assert.Contains(runways.Of("LSZH"), r => r.Le == "10" && r.He == "28" && r.LengthM == 2500 && r.Exact);
+        var json = System.Text.Json.JsonDocument.Parse(runways.ApproxLayoutJson("UUEE")!).RootElement;
+        Assert.True(json.GetProperty("approx").GetBoolean());
+        Assert.Contains(json.GetProperty("runways").EnumerateArray(), r => r.GetProperty("ref").GetString() == "06R/24L");
+        Assert.Null(runways.ApproxLayoutJson("ZZZZ"));
+
+        // OpenStreetMap never answers here: the runways come at once, and are not to be cached by the browser.
+        string cache = TempDir();
+        try
+        {
+            var slow = BuildLayout(cache, _ => { Thread.Sleep(1500); return new HttpResponseMessage(HttpStatusCode.GatewayTimeout); });
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var (layout, approx) = await runways.LayoutAsync(slow, "ULLI", TimeSpan.FromMilliseconds(300), CancellationToken.None);
+            Assert.True(approx);
+            Assert.Contains("10L/28R", layout);
+            Assert.True(watch.ElapsedMilliseconds < 3000, $"waited {watch.ElapsedMilliseconds} ms");
+        }
+        finally { try { Directory.Delete(cache, true); } catch (IOException) { } }
+    }
+
+    [Fact]
     public async Task FallsBackToNextServerWhenFirstFails()
     {
         string cache = TempDir();

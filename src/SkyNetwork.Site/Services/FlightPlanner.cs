@@ -72,7 +72,7 @@ public sealed record PlanResult(
 /// </summary>
 public sealed class FlightPlanner(
     NavData nav, AircraftService aircraft, MetarService metar, WindsAloftService aloft,
-    AirportLayout layouts, IWebHostEnvironment env, ILogger<FlightPlanner> log)
+    AirportLayout layouts, RunwayData runwayData, IWebHostEnvironment env, ILogger<FlightPlanner> log)
 {
     private const double TaxiMin = 15;
     private const double HoldAltFt = 1500;
@@ -683,20 +683,10 @@ public sealed class FlightPlanner(
         return o.ToString("00") + side;
     }
 
-    private async Task<string?> LayoutAsync(string icao)
-    {
-        // The first fetch of an airport can take long: wait a little, let it finish and be cached for the next plan.
-        var task = layouts.GetAsync(icao, CancellationToken.None);
-        try
-        {
-            if (await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(10))) == task) return await task;
-        }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or IOException)
-        {
-            log.LogWarning("Layout of {Icao} for the planner: {Error}", icao, e.Message);
-        }
-        return null;
-    }
+    // The OpenStreetMap diagram when it comes quickly (it goes on loading and is cached for the next plan),
+    // otherwise the runways from OurAirports: the plan does not wait minutes for a runway.
+    private async Task<string?> LayoutAsync(string icao) =>
+        (await runwayData.LayoutAsync(layouts, icao, TimeSpan.FromSeconds(4), CancellationToken.None)).Json;
 
     private async Task<(PlanWeather, DecodedMetar?)> WeatherAsync(string icao, CancellationToken ct)
     {
