@@ -52,6 +52,24 @@ public class AirportLayoutTests
     }
 
     [Fact]
+    public async Task AnAnswerWithAnErrorRemark_IsAFailure_AndEmptyDiagramsHaveNoRunways()
+    {
+        string cache = TempDir();
+        try
+        {
+            int calls = 0;
+            var layout = BuildLayout(cache, _ => ++calls == 1
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{"elements":[],"remark":"runtime error: Query timed out"}""") }
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(OverpassOk) });
+            string? json = await layout.GetAsync("UUEE", CancellationToken.None);
+            Assert.Equal(2, calls);
+            Assert.True(AirportLayout.HasRunways(json!));
+            Assert.False(AirportLayout.HasRunways("""{"runways":[],"taxiways":[]}"""));
+        }
+        finally { try { Directory.Delete(cache, true); } catch (IOException) { } }
+    }
+
+    [Fact]
     public async Task FallsBackToNextServerWhenFirstFails()
     {
         string cache = TempDir();

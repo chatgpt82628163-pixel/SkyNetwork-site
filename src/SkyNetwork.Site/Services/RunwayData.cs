@@ -77,6 +77,29 @@ public sealed class RunwayData(IWebHostEnvironment env, ILogger<RunwayData> log)
         });
     }
 
+    /// <summary>An OpenStreetMap diagram without runways gets them from OurAirports ("runwaysApprox": true).</summary>
+    private string WithRunways(string icao, string json)
+    {
+        var list = Of(icao);
+        if (list.Count == 0) return json;
+        try
+        {
+            var node = System.Text.Json.Nodes.JsonNode.Parse(json)!.AsObject();
+            node["runways"] = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(list.Select(r => new
+            {
+                @ref = r.He.Length > 0 ? $"{r.Le}/{r.He}" : r.Le,
+                width = r.WidthM > 0 ? r.WidthM : 45,
+                line = new[] { new[] { r.Lat1, r.Lon1 }, new[] { r.Lat2, r.Lon2 } },
+            })));
+            node["runwaysApprox"] = true;
+            return node.ToJsonString();
+        }
+        catch (Exception e) when (e is JsonException or InvalidOperationException)
+        {
+            return json;
+        }
+    }
+
     /// <summary>
     /// The OpenStreetMap diagram if it comes within <paramref name="wait"/> (it goes on loading and is cached for
     /// the next time), otherwise the approximate one. Approx is true for the latter.
@@ -87,7 +110,8 @@ public sealed class RunwayData(IWebHostEnvironment env, ILogger<RunwayData> log)
         var fetch = Task.Run(() => layouts.GetAsync(icao, CancellationToken.None));
         try
         {
-            if (await Task.WhenAny(fetch, Task.Delay(wait, ct)) == fetch && await fetch is { } json) return (json, false);
+            if (await Task.WhenAny(fetch, Task.Delay(wait, ct)) == fetch && await fetch is { } json)
+                return (AirportLayout.HasRunways(json) ? json : WithRunways(icao, json), false);
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or IOException)
         {

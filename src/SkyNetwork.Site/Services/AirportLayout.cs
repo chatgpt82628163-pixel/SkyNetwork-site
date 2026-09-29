@@ -91,7 +91,19 @@ public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<Site
                 {
                     using var content = new FormUrlEncodedContent([new("data", query)]);
                     using var r = await http.CreateClient("overpass").PostAsync(server, content);
-                    if (r.IsSuccessStatusCode) { answer = await r.Content.ReadAsStringAsync(); break; }
+                    if (r.IsSuccessStatusCode)
+                    {
+                        string body = await r.Content.ReadAsStringAsync();
+                        // A busy server answers 200 with a "remark" (runtime error, timed out) and part of the data
+                        // or none: that is a failure, the next server is asked.
+                        if (body.Contains("\"remark\"") && (body.Contains("runtime error") || body.Contains("timed out") || body.Contains("out of memory")))
+                        {
+                            log.LogWarning("Airport {Icao}: {Server} answered with an error remark", icao, new Uri(server).Host);
+                            continue;
+                        }
+                        answer = body;
+                        break;
+                    }
                     log.LogWarning("Airport {Icao}: {Server} {Status}", icao, new Uri(server).Host, (int)r.StatusCode);
                 }
                 catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
@@ -106,6 +118,17 @@ public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<Site
             }
             _failures.TryRemove(icao, out _);
             string json = Reduce(icao, answer);
+            // An answer without a single runway does not replace a diagram that has them (seen: UUEE, LYTV).
+            if (!HasRunways(json) && File.Exists(path))
+            {
+                string old = await File.ReadAllTextAsync(path);
+                if (HasRunways(old))
+                {
+                    log.LogWarning("Airport {Icao}: no runways in the new answer, the cached diagram is kept", icao);
+                    File.SetLastWriteTimeUtc(path, DateTime.UtcNow);
+                    return old;
+                }
+            }
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             string tmp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             await File.WriteAllTextAsync(tmp, json);
@@ -119,6 +142,17 @@ public sealed partial class AirportLayout(IHttpClientFactory http, IOptions<Site
             return null;
         }
         finally { _overpass.Release(); }
+    }
+
+    /// <summary>Whether a diagram (the reduced JSON) has at least one runway.</summary>
+    public static bool HasRunways(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("runways", out var r) && r.ValueKind == JsonValueKind.Array && r.GetArrayLength() > 0;
+        }
+        catch (JsonException) { return false; }
     }
 
     /// <summary>Returns true when the cache file exists and is fresh (no fetch needed).</summary>
