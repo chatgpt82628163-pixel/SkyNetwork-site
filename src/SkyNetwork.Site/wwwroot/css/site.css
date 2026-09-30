@@ -896,6 +896,7 @@ details.mc-sec .mc-block + .mc-block { margin-top: 12px; }
 .friend-list .status.on { color: var(--live); font-weight: 600; }
 
 /* ---- radio phraseology (/docs/phraseology): on a phone each line stacks — who, English, Russian ---- */
+table.phrases { table-layout: fixed; }
 table.phrases td { line-height: 1.5; }
 table.phrases td[lang=ru] { color: var(--ink); }
 @media (max-width: 760px) {
