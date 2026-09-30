@@ -22,6 +22,9 @@ public static class PlannerTexts
         "Cruise speed", "Route distance", "Great circle", "Average wind", "Wind component", "ISA deviation", "Units",
         "Winds aloft", "none (calm, ISA)", "Load sheet", "Trip fuel", "Empty weight", "Baggage", "Cargo",
         "For the simulator only. Not for real-world navigation.", "Warnings", "Calculating…",
+        // Phraseology tab
+        "Clearance", "Pushback and start-up", "En route", "Descent and approach", "After landing", "Pilot", "Controller",
+        "Said on the air", "Squawk code, ATIS letter, levels and frequencies are examples: use what the controller gives you.",
     ];
 
     public static string Json(Lang l) => JsonSerializer.Serialize(Keys.ToDictionary(k => k, k => l[k]));

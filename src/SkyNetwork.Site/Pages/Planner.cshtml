@@ -94,6 +94,7 @@
         <button type="button" data-tab="navlog">@L["Navigation log"]</button>
         <button type="button" data-tab="fuel">@L["Fuel"]</button>
         <button type="button" data-tab="summary">@L["Flight summary"]</button>
+        <button type="button" data-tab="rt">@L["Phraseology"]</button>
         <button type="button" id="ps-collapse" class="ps-collapse" title="@L["Hide or show"]" aria-label="@L["Hide or show"]">▾</button>
       </div>
     </div>
@@ -123,6 +124,16 @@
     <div class="ps-tab" id="ps-tab-navlog" hidden><div id="ps-navlog" class="ps-scroll"></div></div>
     <div class="ps-tab" id="ps-tab-fuel" hidden><div id="ps-fueltab" class="ps-scroll"></div></div>
     <div class="ps-tab" id="ps-tab-summary" hidden><div id="ps-summary" class="ps-scroll"></div></div>
+    <div class="ps-tab" id="ps-tab-rt" hidden>
+      <div class="ps-scroll">
+        <div class="ps-rt-bar">
+          <label>@L["Your callsign"]<input id="ps-rt-cs" class="mono" maxlength="10" placeholder="AFL1234" autocomplete="off"></label>
+          <label>@L["Stand"]<input id="ps-rt-stand" class="mono" maxlength="5" placeholder="25" autocomplete="off"></label>
+          <p id="ps-rt-say" class="ps-rt-say"></p>
+        </div>
+        <div id="ps-rt"><p class="muted small">@L["Make a plan to get the phrases for your flight."]</p></div>
+      </div>
+    </div>
   </section>
 
   <nav class="ps-dock ps-glass" id="ps-dock">

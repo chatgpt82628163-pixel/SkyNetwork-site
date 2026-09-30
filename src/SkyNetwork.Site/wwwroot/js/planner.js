@@ -182,6 +182,7 @@
     root.classList.add('has-plan');
     renderTop(p); renderRunways(p); renderWeather(p); renderLoad(p);
     renderRoute(p); renderNavlog(p); renderFuel(p); renderSummary(p); renderOfp(p);
+    $('#ps-rt-cs').value = $('#ps-callsign').value; renderRt(p);
     // Last: the panels have their final size, the route is fitted into what is left of the map.
     drawMap(p);
     // The fields show what the plan was made with (the level and pax when left automatic).
@@ -588,6 +589,156 @@ ${wps}
     if (b.dataset.fmt === 'txt') download(name + '.txt', $('#ps-ofp').textContent, 'text/plain');
     b.closest('details')?.removeAttribute('open');
   });
+
+  // ── radio phraseology (ФРО) for this flight ────────────────────────────────
+  // The exchange from clearance to stand in English and in Russian, built from the plan: the airports, the runways and
+  // winds chosen, the level and the route fixes, with the pilot's own callsign spoken the way it is said on the air.
+
+  // Airports as their ATC units are called: English, Russian, Russian after «до» (genitive).
+  const RT_APT = {
+    UUEE: ['Sheremetyevo', 'Шереметьево', 'Шереметьево'], UUDD: ['Domodedovo', 'Домодедово', 'Домодедово'],
+    UUWW: ['Vnukovo', 'Внуково', 'Внуково'], UUBW: ['Zhukovsky', 'Жуковский', 'Жуковского'], ULLI: ['Pulkovo', 'Пулково', 'Пулково'],
+    URSS: ['Sochi', 'Сочи', 'Сочи'], URKK: ['Krasnodar', 'Краснодар', 'Краснодара'], URRP: ['Rostov', 'Ростов', 'Ростова'],
+    URMM: ['Mineralnye Vody', 'Минеральные Воды', 'Минеральных Вод'], URWW: ['Volgograd', 'Волгоград', 'Волгограда'],
+    UWWW: ['Samara', 'Самара', 'Самары'], UWKD: ['Kazan', 'Казань', 'Казани'], UWGG: ['Nizhny', 'Нижний', 'Нижнего'],
+    USSS: ['Koltsovo', 'Кольцово', 'Кольцово'], UNNT: ['Tolmachevo', 'Толмачёво', 'Толмачёво'], UNKL: ['Krasnoyarsk', 'Красноярск', 'Красноярска'],
+    UHWW: ['Vladivostok', 'Владивосток', 'Владивостока'], UHHH: ['Khabarovsk', 'Хабаровск', 'Хабаровска'], UIII: ['Irkutsk', 'Иркутск', 'Иркутска'],
+    UWUU: ['Ufa', 'Уфа', 'Уфы'], USCC: ['Chelyabinsk', 'Челябинск', 'Челябинска'], USPP: ['Perm', 'Пермь', 'Перми'],
+    UNOO: ['Omsk', 'Омск', 'Омска'], ULMM: ['Murmansk', 'Мурманск', 'Мурманска'], ULAA: ['Arkhangelsk', 'Архангельск', 'Архангельска'],
+    UMKK: ['Kaliningrad', 'Калининград', 'Калининграда'], URML: ['Makhachkala', 'Махачкала', 'Махачкалы'], UWOO: ['Orenburg', 'Оренбург', 'Оренбурга'],
+    UWSG: ['Saratov', 'Саратов', 'Саратова'], UUOO: ['Voronezh', 'Воронеж', 'Воронежа'], UMMS: ['Minsk', 'Минск', 'Минска'],
+    UBBB: ['Baku', 'Баку', 'Баку'], UGTB: ['Tbilisi', 'Тбилиси', 'Тбилиси'], UDYZ: ['Yerevan', 'Ереван', 'Еревана'],
+    UAAA: ['Almaty', 'Алматы', 'Алматы'], UACC: ['Astana', 'Астана', 'Астаны'], UTTT: ['Tashkent', 'Ташкент', 'Ташкента'],
+  };
+  // Airline designators as they are spoken.
+  const RT_AIRLINE = {
+    AFL: ['Aeroflot', 'Аэрофлот'], SDM: ['Russia', 'Россия'], SBI: ['Siberian', 'Сибирь'], UTA: ['UTair', 'Ютэйр'],
+    PBD: ['Pobeda', 'Победа'], AZV: ['Azimuth', 'Азимут'], BRU: ['Belavia', 'Белавиа'],
+  };
+  function rtAirport(a) {
+    if (RT_APT[a.icao]) return RT_APT[a.icao];
+    // Unknown: the name without the words every airport has; Russian keeps the same name.
+    const n = String(a.name || a.icao).replace(/\b(International|Intl\.?|Airport|Airfield|Aerodrome|Air Base|Aeroport)\b/gi, '').replace(/\s+/g, ' ').trim() || a.icao;
+    return [n, n, n];
+  }
+  function rtCallsign(cs) {
+    const m = /^([A-Z]{3})(\d+[A-Z]?)$/.exec(cs);
+    if (m && RT_AIRLINE[m[1]]) return [RT_AIRLINE[m[1]][0] + ' ' + m[2], RT_AIRLINE[m[1]][1] + ' ' + m[2]];
+    return [cs, cs];
+  }
+  // Moscow's airports share one approach: «Москва-Подход».
+  const rtApproach = (icao, n) => /^UU(EE|DD|WW|BW)$/.test(icao) ? ['Moscow', 'Москва'] : [n[0], n[1]];
+  // Runway 24C: «24 center» in English, «24 центральная» in Russian.
+  const rwyEn = r => r || '—';
+  const rwyRu = r => String(r || '—').replace(/^(\d+)L$/, '$1 левая').replace(/^(\d+)R$/, '$1 правая').replace(/^(\d+)C$/, '$1 центральная');
+  const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
+  function rtWind(r) {
+    if (!r || r.windKt == null) return ['wind calm', 'ветер штиль'];
+    const ms = Math.max(1, Math.round(r.windKt * 0.514));
+    if (r.windVariable || r.windDir == null) return [`wind variable ${Math.round(r.windKt)} knots`, `ветер переменный ${ms} ${plural(ms, 'метр', 'метра', 'метров')}`];
+    return [`wind ${pad3(r.windDir)} degrees ${Math.round(r.windKt)} knots`, `ветер ${pad3(r.windDir)} градусов ${ms} ${plural(ms, 'метр', 'метра', 'метров')}`];
+  }
+  // A squawk code and an ATIS letter that stay the same for a callsign (examples: the controller gives the real ones).
+  function rtSeed(s) { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
+  const ATIS = [['Alpha', 'Альфа'], ['Bravo', 'Браво'], ['Charlie', 'Чарли'], ['Delta', 'Дельта'], ['Echo', 'Эхо'], ['Foxtrot', 'Фокстрот'],
+    ['Golf', 'Гольф'], ['Hotel', 'Отель'], ['India', 'Индия'], ['Juliett', 'Джульетт'], ['Kilo', 'Кило'], ['Lima', 'Лима']];
+
+  function rtPhases(p, cs, stand) {
+    const [csEn, csRu] = rtCallsign(cs);
+    const dep = rtAirport(p.departureAirport), dest = rtAirport(p.destinationAirport);
+    const depApp = rtApproach(p.departure, dep), destApp = rtApproach(p.destination, dest);
+    const dr = p.departureRunways?.selected, ar = p.arrivalRunways?.selected;
+    const fixes = p.navLog.filter(x => x.kind !== 'apt' && !/^T[OD]C$/.test(x.ident)).map(x => x.ident);
+    const first = fixes[0] || p.destination, mid = fixes[Math.floor(fixes.length / 2)] || p.destination;
+    const seed = rtSeed(cs + p.departure + p.destination);
+    const sq = String(2000 + seed % 5000).split('').map(d => String(Math.min(7, Number(d)))).join('');
+    const atis = ATIS[seed % ATIS.length];
+    const lvl = String(p.cruiseLevel).padStart(3, '0');
+    const [wDepEn, wDepRu] = rtWind(p.departureRunways), [wArrEn, wArrRu] = rtWind(p.arrivalRunways);
+    const standEn = stand ? `, stand ${stand}` : '', standRu = stand ? `, стоянка ${stand}` : '';
+    const P = (en, ru) => ({ atc: false, en, ru }), A = (en, ru) => ({ atc: true, en, ru });
+    return [
+      [t('Clearance'), [
+        P(`${dep[0]} Delivery, ${csEn}${standEn}, information ${atis[0]}, request clearance to ${dest[0]}.`,
+          `${dep[1]}-Доставка, ${csRu}${standRu}, информация ${atis[1]}, прошу разрешение до ${dest[2]}.`),
+        A(`${csEn}, cleared to ${dest[0]} via ${first}, runway ${rwyEn(dr)}, climb FL070, squawk ${sq}.`,
+          `${csRu}, разрешено до ${dest[2]} через ${first}, полоса ${rwyRu(dr)}, набор эшелона 070, ответчик ${sq}.`),
+        P(`Cleared to ${dest[0]} via ${first}, runway ${rwyEn(dr)}, climb FL070, squawk ${sq}, ${csEn}.`,
+          `Разрешено до ${dest[2]} через ${first}, полоса ${rwyRu(dr)}, набор эшелона 070, ответчик ${sq}, ${csRu}.`),
+      ]],
+      [t('Pushback and start-up'), [
+        P(`${dep[0]} Ground, ${csEn}${standEn}, request pushback and start-up.`,
+          `${dep[1]}-Руление, ${csRu}${standRu}, прошу буксировку и запуск.`),
+        A(`${csEn}, pushback and start-up approved.`, `${csRu}, буксировку и запуск разрешаю.`),
+        P(`Pushback and start-up approved, ${csEn}.`, `Буксировку и запуск разрешили, ${csRu}.`),
+      ]],
+      [t('Taxi'), [
+        P(`${csEn}, request taxi.`, `${csRu}, прошу руление.`),
+        A(`${csEn}, taxi to holding point runway ${rwyEn(dr)}.`, `${csRu}, рулите на предварительный старт полосы ${rwyRu(dr)}.`),
+        P(`Taxi to holding point runway ${rwyEn(dr)}, ${csEn}.`, `Рулю на предварительный старт полосы ${rwyRu(dr)}, ${csRu}.`),
+      ]],
+      [t('Take-off'), [
+        P(`${dep[0]} Tower, ${csEn}, holding point runway ${rwyEn(dr)}, ready for departure.`,
+          `${dep[1]}-Старт, ${csRu}, на предварительном полосы ${rwyRu(dr)}, к взлёту готов.`),
+        A(`${csEn}, ${wDepEn}, runway ${rwyEn(dr)}, cleared for take-off.`, `${csRu}, ${wDepRu}, полоса ${rwyRu(dr)}, взлёт разрешаю.`),
+        P(`Runway ${rwyEn(dr)}, cleared for take-off, ${csEn}.`, `Полоса ${rwyRu(dr)}, взлёт разрешили, ${csRu}.`),
+      ]],
+      [t('Departure'), [
+        A(`${csEn}, contact ${depApp[0]} Approach.`, `${csRu}, работайте с ${depApp[1]}-Подход.`),
+        P(`${depApp[0]} Approach, ${csEn}, passing 2500 feet, climbing FL070.`, `${depApp[1]}-Подход, ${csRu}, 2500 футов, в наборе эшелона 070.`),
+        A(`${csEn}, identified, climb FL${lvl}.`, `${csRu}, опознан, набирайте эшелон ${lvl}.`),
+        P(`Climb FL${lvl}, ${csEn}.`, `Набираю эшелон ${lvl}, ${csRu}.`),
+      ]],
+      [t('En route'), [
+        A(`${csEn}, proceed direct ${mid}.`, `${csRu}, следуйте прямо на ${mid}.`),
+        P(`Direct ${mid}, ${csEn}.`, `Прямо на ${mid}, ${csRu}.`),
+      ]],
+      [t('Descent and approach'), [
+        A(`${csEn}, descend FL100, expect ILS approach runway ${rwyEn(ar)}.`,
+          `${csRu}, снижайтесь до эшелона 100, ожидайте заход по ИЛС на полосу ${rwyRu(ar)}.`),
+        P(`Descend FL100, expect ILS runway ${rwyEn(ar)}, ${csEn}.`, `Снижаюсь до эшелона 100, ожидаю ИЛС на полосу ${rwyRu(ar)}, ${csRu}.`),
+        A(`${csEn}, contact ${destApp[0]} Approach.`, `${csRu}, работайте с ${destApp[1]}-Подход.`),
+        A(`${csEn}, cleared ILS approach runway ${rwyEn(ar)}, report established.`,
+          `${csRu}, заход по ИЛС на полосу ${rwyRu(ar)} разрешаю, доложите на курсе.`),
+        P(`Cleared ILS runway ${rwyEn(ar)}, wilco, ${csEn}.`, `Заход по ИЛС на полосу ${rwyRu(ar)} разрешили, доложу, ${csRu}.`),
+      ]],
+      [t('Landing'), [
+        P(`${dest[0]} Tower, ${csEn}, established ILS runway ${rwyEn(ar)}.`, `${dest[1]}-Старт, ${csRu}, на курсе ИЛС полосы ${rwyRu(ar)}.`),
+        A(`${csEn}, ${wArrEn}, runway ${rwyEn(ar)}, cleared to land.`, `${csRu}, ${wArrRu}, полоса ${rwyRu(ar)}, посадку разрешаю.`),
+        P(`Runway ${rwyEn(ar)}, cleared to land, ${csEn}.`, `Полоса ${rwyRu(ar)}, посадку разрешили, ${csRu}.`),
+      ]],
+      [t('After landing'), [
+        A(`${csEn}, vacate when able, contact ${dest[0]} Ground.`, `${csRu}, освобождайте полосу, работайте с ${dest[1]}-Руление.`),
+        P(`${dest[0]} Ground, ${csEn}, runway ${rwyEn(ar)} vacated, request taxi to stand.`,
+          `${dest[1]}-Руление, ${csRu}, полосу ${rwyRu(ar)} освободил, прошу руление на стоянку.`),
+      ]],
+    ];
+  }
+
+  function renderRt(p) {
+    const cs = ($('#ps-callsign').value || '').trim().toUpperCase() || 'AFL1234';
+    const stand = ($('#ps-rt-stand').value || '').trim().toUpperCase();
+    const [en, ruName] = rtCallsign(cs);
+    $('#ps-rt-say').innerHTML = `${esc(t('Said on the air'))}: <b>${esc(en)}</b> · <b>${esc(ruName)}</b>`;
+    if (!p) return;
+    $('#ps-rt').innerHTML = rtPhases(p, cs, stand).map(([title, lines]) => `
+      <h4>${esc(title)}</h4>
+      <table class="ps-table ps-rt-table"><colgroup><col style="width:92px"><col><col></colgroup>
+        <tbody>${lines.map(l => `<tr class="${l.atc ? 'atc' : 'pilot'}"><td><span class="badge ${l.atc ? 'accent' : ''}">${esc(l.atc ? t('Controller') : t('Pilot'))}</span></td>
+          <td lang="en">${esc(l.en)}</td><td lang="ru">${esc(l.ru)}</td></tr>`).join('')}</tbody></table>`).join('') +
+      `<p class="muted small">${esc(t('Squawk code, ATIS letter, levels and frequencies are examples: use what the controller gives you.'))}</p>`;
+  }
+  // The callsign here and in the flight form are one field: typing in either updates the phrases at once.
+  for (const id of ['ps-rt-cs', 'ps-callsign']) $('#' + id).addEventListener('input', e => {
+    const other = $(id === 'ps-rt-cs' ? '#ps-callsign' : '#ps-rt-cs');
+    other.value = e.target.value;
+    store.set('callsign', e.target.value.trim().toUpperCase());
+    renderRt(current);
+  });
+  $('#ps-rt-stand').addEventListener('input', () => renderRt(current));
+  if (!$('#ps-callsign').value) $('#ps-callsign').value = store.get('callsign', '');
+  $('#ps-rt-cs').value = $('#ps-callsign').value;
+  renderRt(null);
 
   // ── panels ───────────────────────────────────────────────────────────────
   $('#ps-tabs').addEventListener('click', e => {

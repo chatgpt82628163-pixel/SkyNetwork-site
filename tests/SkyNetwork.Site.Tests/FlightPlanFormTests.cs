@@ -53,6 +53,15 @@ public class FlightPlanFormTests
     }
 
     [Fact]
+    public async Task Planner_HasPhraseologyTabWithCallsign()
+    {
+        using var site = new SiteFactory();
+        string html = await site.Browser().HtmlAsync("/planner");
+        Assert.Contains("data-tab=\"rt\"", html);
+        Assert.Contains("id=\"ps-rt-cs\"", html);
+    }
+
+    [Fact]
     public async Task Phraseology_ShowsBothLanguages()
     {
         using var site = new SiteFactory();
