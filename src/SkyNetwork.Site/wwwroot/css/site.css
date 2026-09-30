@@ -1108,3 +1108,6 @@ html.motion [data-reveal].in { opacity: 1; transform: none; }
 .friend-list .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .friend-list .status { font-size: 13px; color: var(--slate); }
 .friend-list .status.on { color: var(--live); font-weight: 600; }
+
+/* Radio phraseology (/docs/phraseology): the same columns in every table. */
+table.phrases { table-layout: fixed; }
