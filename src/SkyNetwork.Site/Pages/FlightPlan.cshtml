@@ -5,8 +5,8 @@
   <partial name="_AccountNav" />
   <div>
     <h1 style="font-size:30px">@L["Flight plan"]</h1>
-    <p class="muted">@L["File your plan before connecting. Press “Refresh” in SkyPilot and the plan goes to the controllers. While you are online SkyPilot checks the website every 30 seconds."] <a href="/planner">@L["Need a route? Try the planner."]</a></p>
-    @if (Model.Saved) { <div class="alert ok">@L["Plan filed. Press “Refresh” in SkyPilot."]</div> }
+    <p class="muted">@L["File your plan before connecting: SkyPilot takes it by itself when you connect and checks the website every 30 seconds while you are online."] <a href="/planner">@L["Need a route? Try the planner."]</a> <a href="/docs/phraseology">@L["Radio phraseology: examples in English and Russian."]</a></p>
+    @if (Model.Saved) { <div class="alert ok">@L["Plan filed. SkyPilot picks it up by itself within 30 seconds."]</div> }
     @if (Model.Error != null) { <div class="alert error">@L[Model.Error]</div> }
     @if (Model.Imported) { <div class="alert ok">@L["Plan loaded from SimBrief. Check the fields and press “File plan”."]</div> }
     <form method="post" asp-page-handler="Simbrief" class="card simbrief-box">
@@ -31,7 +31,7 @@
           </select>
         </label>
         <label>@L["Aircraft type"]<input name="Plan.Aircraft" value="@p.Aircraft" class="mono" required maxlength="8" placeholder="A20N"></label>
-        <label>@L["Speed, knots"]<input name="Plan.CruiseSpeed" value="@(p.CruiseSpeed == 0 ? "" : p.CruiseSpeed)" inputmode="numeric" required></label>
+        <label>@L["Speed, knots"]<input name="Speed" value="@Model.Speed" class="mono" required maxlength="8" placeholder="450" title="@L["Knots: 450 or N0450"]"></label>
       </div>
       <div class="row">
         <label>@L["Departure"]<input name="Plan.Departure" value="@p.Departure" class="mono" required maxlength="4" placeholder="UUEE">
@@ -46,10 +46,10 @@
           @if (p.Alternate.Length == 4 && System.Text.RegularExpressions.Regex.IsMatch(p.Alternate, @"^[A-Z0-9]{4}$")) {
             <span class="hint"><a href="https://chartfox.org/@p.Alternate" target="_blank" rel="noopener">@L["Charts"]</a></span>
           }</label>
-        <label>@L["Departure, UTC"]<input name="Plan.DepartureTime" value="@p.DepartureTime" class="mono" required maxlength="4" placeholder="1200"></label>
+        <label>@L["Departure, UTC"]<input name="Plan.DepartureTime" value="@p.DepartureTime" class="mono" required maxlength="6" placeholder="1200" title="@L["Departure time in UTC: 1200 or 12:00"]"></label>
       </div>
       <div class="row">
-        <label>@L["Cruise level"]<input name="Plan.CruiseAltitude" value="@p.CruiseAltitude" class="mono" required maxlength="6" placeholder="FL350"></label>
+        <label>@L["Cruise level"]<input name="Plan.CruiseAltitude" value="@p.CruiseAltitude" class="mono" required maxlength="7" placeholder="FL350" title="@L["FL350, 9000 (feet) or S1010 (metres)"]"></label>
         <label>@L["En route, h:mm"]<input name="Enroute" value="@Model.Enroute" class="mono" required maxlength="5" placeholder="02:20" title="@L["Hours and minutes: 02:20 or 0220"]"></label>
         <label>@L["Fuel, h:mm"]<input name="Fuel" value="@Model.Fuel" class="mono" required maxlength="5" placeholder="03:30" title="@L["Hours and minutes: 02:20 or 0220"]"></label>
       </div>

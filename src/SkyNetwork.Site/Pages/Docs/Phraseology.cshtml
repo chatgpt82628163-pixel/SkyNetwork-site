@@ -1,0 +1,122 @@
+@page "/docs/phraseology"
+@{
+    ViewData["Title"] = L["Radio phraseology"];
+    // One flight, Sheremetyevo to Sochi, from the clearance to the stand. Each line: who speaks, English, Russian.
+    // The examples are shown in both languages whatever the site language is: pilots use either on the network.
+    (string Title, (bool Atc, string En, string Ru)[] Lines)[] phases =
+    [
+        (L["Clearance"], [
+            (false, "Sheremetyevo Delivery, Aeroflot 1492, stand 25, information Kilo, request clearance to Sochi.",
+                    "Шереметьево-Доставка, Аэрофлот 1492, стоянка 25, информация Кило, прошу разрешение до Сочи."),
+            (true,  "Aeroflot 1492, cleared to Sochi, OKLOT 1D departure, runway 24C, climb FL070, squawk 2413.",
+                    "Аэрофлот 1492, разрешено до Сочи, выход OKLOT 1D, полоса 24 центральная, набор эшелона 070, ответчик 2413."),
+            (false, "Cleared to Sochi, OKLOT 1D, runway 24C, climb FL070, squawk 2413, Aeroflot 1492.",
+                    "Разрешено до Сочи, OKLOT 1D, полоса 24 центральная, набор эшелона 070, ответчик 2413, Аэрофлот 1492."),
+        ]),
+        (L["Pushback and start-up"], [
+            (false, "Sheremetyevo Ground, Aeroflot 1492, stand 25, request pushback and start-up.",
+                    "Шереметьево-Руление, Аэрофлот 1492, стоянка 25, прошу буксировку и запуск."),
+            (true,  "Aeroflot 1492, pushback and start-up approved, facing west.",
+                    "Аэрофлот 1492, буксировку и запуск разрешаю, носом на запад."),
+            (false, "Pushback and start-up approved, facing west, Aeroflot 1492.",
+                    "Буксировку и запуск разрешили, носом на запад, Аэрофлот 1492."),
+        ]),
+        (L["Taxi"], [
+            (false, "Aeroflot 1492, request taxi.",
+                    "Аэрофлот 1492, прошу руление."),
+            (true,  "Aeroflot 1492, taxi to holding point runway 24C via A, B7.",
+                    "Аэрофлот 1492, рулите на предварительный старт полосы 24 центральная по A, B7."),
+            (false, "Taxi to holding point runway 24C via A, B7, Aeroflot 1492.",
+                    "Рулю на предварительный старт полосы 24 центральная по A, B7, Аэрофлот 1492."),
+        ]),
+        (L["Take-off"], [
+            (false, "Sheremetyevo Tower, Aeroflot 1492, holding point runway 24C, ready for departure.",
+                    "Шереметьево-Старт, Аэрофлот 1492, на предварительном полосы 24 центральная, к взлёту готов."),
+            (true,  "Aeroflot 1492, wind 250 degrees 6 knots, runway 24C, cleared for take-off.",
+                    "Аэрофлот 1492, ветер 250 градусов 3 метра, полоса 24 центральная, взлёт разрешаю."),
+            (false, "Runway 24C, cleared for take-off, Aeroflot 1492.",
+                    "Полоса 24 центральная, взлёт разрешили, Аэрофлот 1492."),
+        ]),
+        (L["Departure"], [
+            (true,  "Aeroflot 1492, contact Moscow Approach 120.800.",
+                    "Аэрофлот 1492, работайте с Москва-Подход, 120,8."),
+            (false, "Moscow Approach, Aeroflot 1492, passing 2500 feet, climbing FL070, OKLOT 1D.",
+                    "Москва-Подход, Аэрофлот 1492, 2500 футов, в наборе эшелона 070, выход OKLOT 1D."),
+            (true,  "Aeroflot 1492, identified, climb FL250.",
+                    "Аэрофлот 1492, опознан, набирайте эшелон 250."),
+        ]),
+        (L["En route"], [
+            (false, "Moscow Control, Aeroflot 1492, climbing FL250.",
+                    "Москва-Контроль, Аэрофлот 1492, в наборе эшелона 250."),
+            (true,  "Aeroflot 1492, climb FL350, proceed direct MOMER.",
+                    "Аэрофлот 1492, набирайте эшелон 350, следуйте прямо на MOMER."),
+            (false, "Climb FL350, direct MOMER, Aeroflot 1492.",
+                    "Набираю эшелон 350, прямо на MOMER, Аэрофлот 1492."),
+        ]),
+        (L["Descent and approach"], [
+            (true,  "Aeroflot 1492, descend FL100, expect ILS approach runway 02.",
+                    "Аэрофлот 1492, снижайтесь до эшелона 100, ожидайте заход по ИЛС на полосу 02."),
+            (false, "Descend FL100, expect ILS runway 02, Aeroflot 1492.",
+                    "Снижаюсь до эшелона 100, ожидаю ИЛС на полосу 02, Аэрофлот 1492."),
+            (true,  "Aeroflot 1492, turn right heading 350, cleared ILS approach runway 02, report established.",
+                    "Аэрофлот 1492, правым на курс 350, заход по ИЛС на полосу 02 разрешаю, доложите на курсе."),
+            (false, "Right heading 350, cleared ILS runway 02, wilco, Aeroflot 1492.",
+                    "Правым на курс 350, заход по ИЛС на полосу 02 разрешили, доложу, Аэрофлот 1492."),
+        ]),
+        (L["Landing"], [
+            (false, "Sochi Tower, Aeroflot 1492, established ILS runway 02.",
+                    "Сочи-Старт, Аэрофлот 1492, на курсе ИЛС полосы 02."),
+            (true,  "Aeroflot 1492, wind 040 degrees 8 knots, runway 02, cleared to land.",
+                    "Аэрофлот 1492, ветер 040 градусов 4 метра, полоса 02, посадку разрешаю."),
+            (false, "Runway 02, cleared to land, Aeroflot 1492.",
+                    "Полоса 02, посадку разрешили, Аэрофлот 1492."),
+        ]),
+        (L["After landing"], [
+            (true,  "Aeroflot 1492, vacate via C, contact Sochi Ground 121.700.",
+                    "Аэрофлот 1492, освобождайте по C, работайте с Сочи-Руление, 121,7."),
+            (false, "Sochi Ground, Aeroflot 1492, runway 02 vacated via C, request taxi to stand.",
+                    "Сочи-Руление, Аэрофлот 1492, полосу 02 освободил по C, прошу руление на стоянку."),
+        ]),
+        (L["No controller on frequency"], [
+            (false, "Sochi traffic, Aeroflot 1492, lining up runway 02 for departure, Sochi.",
+                    "Сочи, всем бортам: Аэрофлот 1492, занимаю полосу 02 для взлёта."),
+            (false, "Sochi traffic, Aeroflot 1492, 10 miles south, descending 3000 feet, straight-in runway 02, Sochi.",
+                    "Сочи, всем бортам: Аэрофлот 1492, 10 миль южнее, снижаюсь 3000 футов, прямой заход на полосу 02."),
+        ]),
+    ];
+}
+<div class="wrap page with-side">
+  <partial name="_DocsNav" />
+  <div>
+    <div class="page-head">
+      <h1>@L["Radio phraseology"]</h1>
+      <p>@L["One flight from Sheremetyevo to Sochi, from the clearance to the stand. On SkyNetwork you may talk in English or in Russian: answer in the language the controller uses."]</p>
+    </div>
+
+    <div class="card" style="margin-bottom:32px">
+      <h3>@L["Always read back"]</h3>
+      <p class="muted" style="margin:0">@L["Runway, take-off and landing clearances, level, heading, speed, squawk code and frequency — and end with your callsign. Winds in Russia are given in metres per second, frequencies are read with a decimal: 120.8 is «one two zero decimal eight» or «сто двадцать и восемь»."]</p>
+    </div>
+
+    @foreach (var (title, lines) in phases)
+    {
+      <h2 style="font-size:22px;margin:32px 0 12px">@title</h2>
+      <div class="table-wrap">
+        <table class="phrases">
+          <thead><tr><th style="width:120px"></th><th>English</th><th>Русский</th></tr></thead>
+          <tbody>
+            @foreach (var (atc, en, ru) in lines)
+            {
+              <tr>
+                <td><span class="badge @(atc ? "accent" : "")">@(atc ? L["Controller"] : L["Pilot"])</span></td>
+                <td lang="en">@en</td>
+                <td lang="ru">@ru</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <p class="muted small" style="margin-top:24px">@L["Unicom 122.800 is for airports without a controller: say where you are and what you are doing, for everyone around."]</p>
+  </div>
+</div>

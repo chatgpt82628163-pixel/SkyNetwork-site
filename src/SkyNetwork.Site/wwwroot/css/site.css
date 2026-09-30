@@ -415,7 +415,7 @@ td.mono { font-size: 14px; }
 .danger-zone { border: 1px solid var(--danger-soft-line); background: var(--danger-soft); }
 .danger-zone:not(.card) { padding: 18px; border-radius: var(--r-card); }
 .danger-zone .btn-danger { background: var(--card-bg); }
-.row { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.row { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); align-items: start; }
 label { display: grid; gap: 6px; font-weight: 500; font-size: 14px; }
 label .hint { font-weight: 400; color: var(--slate); font-size: 13px; }
 input, select, textarea {
