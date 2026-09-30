@@ -228,3 +228,21 @@ html:has(#ps)::-webkit-scrollbar { display: none; }
 .ps-busy-chip { padding: 4px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; font-size: 13px; animation: ps-pulse 1.2s ease-in-out infinite; }
 @keyframes ps-pulse { 50% { opacity: .5; } }
 @media (prefers-reduced-motion: reduce) { .ps-busy-chip { animation: none; } }
+
+/* Phraseology tab (ФРО): the pilot's callsign on top, then the exchange phase by phase, English beside Russian. */
+.ps-rt-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; margin-bottom: 8px; }
+.ps-rt-bar label { display: grid; gap: 4px; font-size: 12.5px; }
+.ps-rt-bar input { width: 140px; min-height: 34px; padding: 5px 10px; font-size: 14px; text-transform: uppercase; }
+.ps-rt-bar #ps-rt-stand { width: 90px; }
+.ps-rt-say { margin: 0 0 6px; font-size: 13.5px; color: var(--slate); }
+.ps-rt-say b { color: var(--ink); }
+#ps-rt h4 { margin: 16px 0 6px; }
+.ps-rt-table { table-layout: fixed; width: 100%; font-size: 13.5px; }
+.ps-rt-table td { white-space: normal; line-height: 1.45; vertical-align: top; text-align: left; }
+.ps-rt-table tr.atc td[lang] { color: var(--ink); }
+.ps-rt-table tr.pilot td[lang] { color: var(--ink); font-weight: 500; }
+@media (max-width: 760px) {
+  .ps-rt-table colgroup { display: none; }
+  .ps-rt-table tr { display: grid; gap: 3px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .ps-rt-table td { border: 0; padding: 0; }
+}

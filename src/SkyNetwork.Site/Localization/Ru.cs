@@ -37,6 +37,13 @@ public static class Ru
         ["Cruise level: for example FL350, 9000 or S1010"] = "Эшелон: например FL350, 9000 или S1010",
         // Radio phraseology
         ["Radio phraseology"] = "Фразеология",
+        // Planner: phraseology tab
+        ["Phraseology"] = "ФРО",
+        ["Your callsign"] = "Ваш позывной",
+        ["Stand"] = "Стоянка",
+        ["Make a plan to get the phrases for your flight."] = "Постройте план — и здесь появится радиообмен для вашего полёта.",
+        ["Said on the air"] = "В эфире",
+        ["Squawk code, ATIS letter, levels and frequencies are examples: use what the controller gives you."] = "Код ответчика, буква ATIS, эшелоны и частоты — примеры: используйте то, что даст диспетчер.",
         ["One flight from Sheremetyevo to Sochi, from the clearance to the stand. On SkyNetwork you may talk in English or in Russian: answer in the language the controller uses."] = "Один полёт из Шереметьево в Сочи — от разрешения до стоянки. В SkyNetwork можно говорить по-английски или по-русски: отвечайте на том языке, на котором работает диспетчер.",
         ["Always read back"] = "Что всегда повторять",
         ["Runway, take-off and landing clearances, level, heading, speed, squawk code and frequency — and end with your callsign. Winds in Russia are given in metres per second, frequencies are read with a decimal: 120.8 is «one two zero decimal eight» or «сто двадцать и восемь»."] = "Полосу, разрешения на взлёт и посадку, эшелон, курс, скорость, код ответчика и частоту — и в конце свой позывной. Ветер в России дают в метрах в секунду, частоты читают с десятыми: 120,8 — «one two zero decimal eight» или «сто двадцать и восемь».",
